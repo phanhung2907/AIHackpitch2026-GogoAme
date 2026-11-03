@@ -2,7 +2,7 @@
 
 ## Trạng thái
 
-SETUP hoàn tất trong phạm vi công cụ/tài liệu, đã push checkpoint `d2dd422` lên `origin/codex/setup-agent-workflow` và xác minh SHA local/remote khớp. Chờ đề bài trước PLAN. Chưa có app/mock/live/backend design hoàn chỉnh. Không có hosted CI/deploy. Commit bổ sung bàn giao nằm sau checkpoint này; tra Git để lấy HEAD mới nhất.
+SETUP đã hoàn tất; đã nhận Đề 2 TapOrder và bổ sung bắt buộc phân quyền ba vai trò. Đang PLAN checkpoint S1 trên `codex/taporder-plan`: [PLAN chung](../plans/product-plan.md) có scope, quyết định nghiệp vụ, hệ thống, quyền/UI, dữ liệu và concurrency. Chưa hoàn thành S2 chi tiết feature/contract/FE/BE/tests. Chưa có app/mock/live, hosted CI hay deploy. Tra Git history/remote để lấy checkpoint mới nhất; chưa tính push thành công trước khi xác minh SHA.
 
 ## Đã chuẩn bị
 
@@ -18,6 +18,6 @@ Playbook có 14 link tới source của dự án cũ không tồn tại ở repo
 
 ## Việc tiếp theo
 
-Nhận đề từ chủ repo → đọc context + playbook PLAN → tạo `plans/product-plan.md` từ template → chốt scope/system/features/contract trước hai agent. Chưa cần khởi chạy hai agent ở SETUP.
+Hoàn tất S2 trong cùng `plans/product-plan.md`: catalog/feature, contract dự kiến, FE/BE, task graph, tests/CI/demo. Chỉ làm PLAN trong lượt giao này; CONTRACT và hai agent sản phẩm thuộc mốc tiếp theo. Chưa tạo canonical OpenAPI hay scaffold.
 
 Nhánh/SHA: tra Git history và remote của checkpoint mới nhất; không nhúng SHA tự tham chiếu vào commit. Nếu remote chưa khớp, báo unsynced.

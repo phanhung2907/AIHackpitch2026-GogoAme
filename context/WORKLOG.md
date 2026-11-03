@@ -1,5 +1,15 @@
 # Worklog
 
+## 2026-11-03 07:58 Asia/Bangkok — PLAN S1: hệ thống và quyền TapOrder
+
+- Yêu cầu: PLAN chi tiết FE/BE chung một file; ba role có API/actions/UI khác nhau; commit/push sau mỗi bước. Chỉ PLAN, chưa triển khai app.
+- Nguồn đọc: AGENTS.md, agent.md, PROJECT/HANDOFF/WORKLOG, plans/README + template, feature template, README; đủ 10 Markdown playbook; skills git-workflow, verification-loop, security-review, agent-self-evaluation.
+- Repo baseline `88e19d3`, sạch, chưa manifests/locks/tests/CI. Tạo nhánh `codex/taporder-plan`; fetch origin thành công với quyền phù hợp sau lần read remote mặc định lỗi mạng. Giữ remote cũ.
+- S1: tạo PLAN sections 1–6, scope/decisions/system trước feature; role/action/resource/UI matrix, guest capability + staff RBAC, schema/state/locks/idempotency, môi trường/seed/rollback. P0 nghiệp vụ, P1 SSE, P2 gợi ý/thống kê.
+- Chốt ba câu hỏi đề: hủy dòng của mình khi waiting; paid không reopen, QR cho lượt mới khi submit; hết hàng reject cả lượt và giữ giỏ. Không có câu hỏi nghiệp vụ chặn PLAN.
+- Mock/live: chưa có app. Checks S1: kiểm cấu trúc/link và diff trước commit; application tests/build/types/lint N/A do chỉ Markdown. Hosted CI/deploy chưa có/chưa chạy. Push/SHA xác minh sau commit, không suy ra từ local.
+- Next owner coordinator: S2 hoàn thiện cùng file, chưa chạy hai agent sản phẩm.
+
 ## 2026-11-03 — SETUP: quy trình và vault
 
 - Yêu cầu: chuẩn bị môi trường/hướng dẫn trước khi nhận đề, giữ stack FE cũ và dùng Python/FastAPI/PostgreSQL Docker.

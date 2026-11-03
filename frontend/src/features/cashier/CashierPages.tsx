@@ -5,10 +5,16 @@ import { QRCodeSVG } from 'qrcode.react'
 import { api } from '../../api/client'
 import { ApiError } from '../../api/types'
 import { Button, Card, Empty, ErrorBox, StatusBadge, clock, vnd } from '../../lib/ui'
+import { SyncBadge, pollInterval, useOnline } from '../../lib/sync'
 
 /** /staff/cashier — bảng bàn, tổng tiền, điều kiện thu tiền do server tính. */
 export function CashierTablesPage() {
-  const tables = useQuery({ queryKey: ['cashier', 'tables'], queryFn: api.tables, refetchInterval: 2000 })
+  const online = useOnline()
+  const tables = useQuery({
+    queryKey: ['cashier', 'tables'],
+    queryFn: api.tables,
+    refetchInterval: pollInterval(online, 2000),
+  })
   const shift = useQuery({ queryKey: ['cashier', 'shift'], queryFn: api.shiftCurrent, refetchInterval: 5000 })
 
   return (
@@ -20,11 +26,14 @@ export function CashierTablesPage() {
             {shift.data ? `Ca mở từ ${clock(shift.data.opened_at)}` : 'Chưa mở ca — chưa nhận order được.'}
           </p>
         </div>
-        {!shift.data && (
-          <Link to="/staff/cashier/shift">
-            <Button>Mở ca ngay</Button>
-          </Link>
-        )}
+        <div className="flex items-center gap-3">
+          <SyncBadge updatedAt={tables.dataUpdatedAt} intervalMs={2000} />
+          {!shift.data && (
+            <Link to="/staff/cashier/shift">
+              <Button>Mở ca ngay</Button>
+            </Link>
+          )}
+        </div>
       </div>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {(tables.data ?? []).map((t) => (

@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { api, guestId } from '../../api/client'
 import { ApiError } from '../../api/types'
 import { Button, Card, ErrorBox, StatusBadge, clock, vnd } from '../../lib/ui'
+import { SyncBadge, pollInterval, useOnline } from '../../lib/sync'
 
 /** /guest/bills/:id — khách theo dõi trạng thái món, hủy món của mình, gọi thêm. */
 export function BillPage() {
@@ -10,8 +11,13 @@ export function BillPage() {
   const qc = useQueryClient()
   const me = guestId()
 
-  // Polling 2s thay SSE ở bản mock; backend thật sẽ đổi sang stream.
-  const bill = useQuery({ queryKey: ['guest', 'bill', id], queryFn: () => api.bill(id), refetchInterval: 2000 })
+  // Polling thay SSE ở bản mock; mất mạng thì giãn về 5s (plan §3.3).
+  const online = useOnline()
+  const bill = useQuery({
+    queryKey: ['guest', 'bill', id],
+    queryFn: () => api.bill(id),
+    refetchInterval: pollInterval(online, 2000),
+  })
 
   const cancel = useMutation({
     mutationFn: ({ itemId, version }: { itemId: string; version: number }) => api.cancelItem(itemId, version),
@@ -33,10 +39,15 @@ export function BillPage() {
   return (
     <div className="mx-auto min-h-screen w-full max-w-md bg-slate-50 pb-24">
       <header className="sticky top-0 z-10 bg-slate-900 px-4 py-3 text-white">
-        <h1 className="text-lg font-bold">Bàn {b.table_number}</h1>
-        <p className="text-xs opacity-80">
-          {b.status === 'open' ? 'Đang phục vụ' : `Đã thanh toán ${b.paid_at ? clock(b.paid_at) : ''}`}
-        </p>
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <h1 className="text-lg font-bold">Bàn {b.table_number}</h1>
+            <p className="text-xs opacity-80">
+              {b.status === 'open' ? 'Đang phục vụ' : `Đã thanh toán ${b.paid_at ? clock(b.paid_at) : ''}`}
+            </p>
+          </div>
+          <SyncBadge updatedAt={bill.dataUpdatedAt} intervalMs={2000} />
+        </div>
       </header>
 
       {cancel.isError && (

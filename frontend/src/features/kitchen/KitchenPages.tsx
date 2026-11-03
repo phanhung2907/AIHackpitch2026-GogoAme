@@ -2,11 +2,17 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../api/client'
 import { ApiError } from '../../api/types'
 import { Button, Card, Empty, ErrorBox, StatusBadge, clock } from '../../lib/ui'
+import { SyncBadge, pollInterval, useOnline } from '../../lib/sync'
 
 /** /staff/kitchen — hàng đợi FIFO, không hiện giá hay thanh toán (ma trận quyền §4.2). */
 export function KitchenQueuePage() {
   const qc = useQueryClient()
-  const queue = useQuery({ queryKey: ['kitchen', 'queue'], queryFn: api.kitchenQueue, refetchInterval: 2000 })
+  const online = useOnline()
+  const queue = useQuery({
+    queryKey: ['kitchen', 'queue'],
+    queryFn: api.kitchenQueue,
+    refetchInterval: pollInterval(online, 2000),
+  })
   const advance = useMutation({
     mutationFn: ({ itemId, status, version }: { itemId: string; status: 'preparing' | 'done'; version: number }) =>
       api.setItemStatus(itemId, status, version),
@@ -17,9 +23,12 @@ export function KitchenQueuePage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-bold">Hàng đợi pha chế</h1>
-        <p className="text-sm text-slate-500">Thứ tự theo thời gian gửi order (FIFO).</p>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h1 className="text-xl font-bold">Hàng đợi pha chế</h1>
+          <p className="text-sm text-slate-500">Thứ tự theo thời gian gửi order (FIFO).</p>
+        </div>
+        <SyncBadge updatedAt={queue.dataUpdatedAt} intervalMs={2000} />
       </div>
       {advance.isError && (
         <ErrorBox message={advance.error instanceof ApiError ? advance.error.message : 'Đổi trạng thái thất bại.'} />

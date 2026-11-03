@@ -2,6 +2,10 @@
 
 ## Trạng thái
 
+FE01 xong trên nhánh `codex/frontend-taporder` (cắt từ `main` tại `2397078`): có `frontend/` chạy được cho cả ba vai trò của Đề 2 trên mock trong browser, kiểm tra bằng `tsc -b`, `vite build` và click trọn kịch bản `DEMO.txt` ở `127.0.0.1:5173`. Chưa có backend, chưa có canonical OpenAPI, chưa có test tự động, chưa deploy. Chi tiết và giới hạn: [WORKLOG mục FE01](WORKLOG.md) và [frontend/README.md](../frontend/README.md).
+
+Lưu ý quy trình: frontend được làm trước CONTRACT theo yêu cầu chủ repo (thành viên khác làm backend rồi nối). `frontend/src/api/client.ts` giữ chữ ký theo contract dự kiến §10.2 để đổi sang live chỉ bằng `VITE_USE_MOCK=0`, nhưng đó là contract **dự kiến**, chưa phải CONTRACT-1 đã chốt.
+
 Theo yêu cầu chủ repo, đưa PLAN vào `main`. Trước thao tác remote chưa có main; tạo main từ toàn bộ lịch sử `codex/taporder-plan` tại `0f53293`, giữ nguyên các nhánh cũ và nhánh mặc định remote. Checkpoint này chỉ cập nhật Git/context, chưa triển khai app. Xem remote main và Git history để xác nhận SHA sau push.
 
 SETUP và nội dung PLAN-2 hoàn tất trên `codex/taporder-plan`: [PLAN chung](../plans/product-plan.md) đủ system/quyền/data, reuse/deploy, feature/API dự kiến/FE/BE/flows/tasks/tests/CI và demo. [DEMO.txt](../DEMO.txt) có usernames dự kiến, cách xuất mật khẩu/URL thật ra TXT local ignored và script Hội đồng. Đúng hai bàn 1/3. Chưa có app/account thật/mock/live/canonical OpenAPI/hosted CI/cloud deploy. Xem Git history và remote SHA cho checkpoint đã push mới nhất.
@@ -20,6 +24,6 @@ Playbook có 14 link tới source của dự án cũ không tồn tại ở repo
 
 ## Việc tiếp theo
 
-C01: tạo canonical OpenAPI/examples/validation từ PLAN-2, chốt CONTRACT-1; tiếp S01 scaffold/locks/CI rồi FE mock/UI song song backend detailed design ở worktrees riêng khi được giao. Lượt này chỉ PLAN, chưa chạy hai agent sản phẩm hay code app.
+Backend FastAPI theo §10.2/§12 rồi nối `VITE_USE_MOCK=0`; sau đó C01: tạo canonical OpenAPI/examples/validation từ PLAN-2, chốt CONTRACT-1; tiếp S01 scaffold/locks/CI rồi FE mock/UI song song backend detailed design ở worktrees riêng khi được giao. Lượt này chỉ PLAN, chưa chạy hai agent sản phẩm hay code app.
 
 Nhánh/SHA: tra Git history và remote của checkpoint mới nhất; không nhúng SHA tự tham chiếu vào commit. Nếu remote chưa khớp, báo unsynced.

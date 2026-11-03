@@ -10,6 +10,7 @@ Ngày thiết lập: 2026-11-03 (Asia/Bangkok).
 - PLAN phải chi tiết FE/BE/system/features. Sau contract baseline, FE mock/UI song song BE detailed design; tiếp theo agent code/test backend rồi tích hợp thật.
 - Đã nhận Đề 2 TapOrder: gọi món theo QR bàn; khách không login, pha chế và thu ngân có tài khoản/quyền/UI riêng. Đang PLAN, chưa triển khai app. Nguồn chuẩn quyết định sản phẩm: [product plan](../plans/product-plan.md).
 - PLAN chọn một quán, FastAPI modular monolith, PostgreSQL, frontend stack giữ nguyên; SSE là sáng tạo ưu tiên. Khách hủy dòng của mình khi waiting; QR sau paid dùng cho lượt mới, chỉ tạo bill khi submit; món hết hàng làm reject toàn lượt. Chi tiết quyền/state/race trong PLAN.
+- Chủ repo bổ sung ưu tiên deploy nhanh và tái sử dụng repo cùng đề. Đã clone 3 repo nguồn local ignored; chọn UI roshanx0/restaurant-ordering-saas (MIT, revision trong PLAN), thay Supabase bằng FastAPI. Railway một Docker web cùng origin + PostgreSQL service là hướng chính; Render dự phòng. Chưa tạo cloud resource/deploy.
 - Các ví dụ banking và kết quả test trong playbook là từ dự án khác, không phải trạng thái repo này.
 - Markdown trong repo là context chuẩn và có thể đọc ngoài Obsidian. UI settings/ECC local/tools/secrets bị ignore.
 

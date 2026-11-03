@@ -2,7 +2,7 @@
 
 ## Trạng thái
 
-SETUP đã hoàn tất; đã nhận Đề 2 TapOrder và bổ sung bắt buộc phân quyền ba vai trò. Đang PLAN checkpoint S1 trên `codex/taporder-plan`: [PLAN chung](../plans/product-plan.md) có scope, quyết định nghiệp vụ, hệ thống, quyền/UI, dữ liệu và concurrency. Chưa hoàn thành S2 chi tiết feature/contract/FE/BE/tests. Chưa có app/mock/live, hosted CI hay deploy. Tra Git history/remote để lấy checkpoint mới nhất; chưa tính push thành công trước khi xác minh SHA.
+SETUP hoàn tất. S1 hệ thống TapOrder đã push `9ccdca2` và xác minh SHA. Đang PLAN trên `codex/taporder-plan`: [PLAN chung](../plans/product-plan.md) có scope/system/quyền/data, mục 7 khảo sát/clone 3 repo và mapping tinh chỉnh, mục 8 runbook deploy nhanh Railway/Render. Chưa hoàn thành S2 feature/contract/FE/BE/tests. Chưa app/mock/live, hosted CI hay cloud deploy. Tra Git history/remote để lấy checkpoint mới nhất.
 
 ## Đã chuẩn bị
 

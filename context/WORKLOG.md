@@ -1,5 +1,14 @@
 # Worklog
 
+## 2026-11-03 — PLAN: khảo sát source và deploy webapp
+
+- S1 commit `9ccdca2a9abb5bd8c031df75c82e73b2397f505c` đã push, local/remote SHA trùng.
+- Chủ repo bổ sung: deploy nhanh và thủ tục rõ trong PLAN; tìm/clone repo cùng đề, ưu tiên repo roshanx0 gửi. Đọc skills deployment-patterns/github-ops, dùng GitHub connector và web docs chính thức.
+- Clone 3 repo vào `.local-tools/references/`, kiểm clones sạch và đều ignored, chưa install/run source/SQL. SHA/lựa chọn trong PLAN mục 7: UI roshan MIT; ứng viên 2 thiếu root LICENSE; ứng viên 3 AGPL không copy code.
+- Static review roshan: SQL thật setup.sql, README chỉ schema.sql không có; checkout tự nhập bàn/tên/phone, tổng/thuế client; JSONB orders thiếu bill nhiều lượt/per-item status; auth/RLS/role phải thay. Không claim runtime/security pass.
+- PLAN mục 8: Railway Docker web FE+FastAPI cùng origin + Postgres, Render dự phòng; account/budget/GitHub/env/Docker/PORT/migrate/seed/HTTPS/QR/SSE/smoke/update/rollback, links nguồn đọc 2026-11-03. Chưa cloud resource/chi phí/deploy.
+- Checks checkpoint: Markdown structure/link và diff trước commit; app tests/build/types/lint N/A, hosted CI/deployed checks chưa chạy. Next coordinator: S2 contract/features/FE/BE/tasks/tests cùng file.
+
 ## 2026-11-03 07:58 Asia/Bangkok — PLAN S1: hệ thống và quyền TapOrder
 
 - Yêu cầu: PLAN chi tiết FE/BE chung một file; ba role có API/actions/UI khác nhau; commit/push sau mỗi bước. Chỉ PLAN, chưa triển khai app.

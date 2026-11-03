@@ -108,6 +108,13 @@ của người khác.
 
 Chạy trên luồng thật, không dữ liệu cứng. Hai cửa sổ khách + hai màn nhân viên.
 
+**Link demo**: `https://leader-weighted-africa-carroll.trycloudflare.com`
+(`/t/t1`, `/t/t3`, `/staff/login`). Tài khoản `cashier.demo` và `barista.demo`.
+URL quick tunnel là tạm — nếu tunnel chết giữa demo, URL đổi, phải lấy lại.
+
+Mở sẵn đủ 4 tab **trước khi lên sân khấu**, và mở ca trước, để 150 giây chỉ dùng
+để bấm chứ không dùng để đăng nhập.
+
 | # | Thao tác | Hội đồng phải thấy |
 | --- | --- | --- |
 | 1 | Thu ngân mở ca | Chưa mở ca thì khách gửi order bị chặn — chứng minh ràng buộc ở server |
@@ -147,12 +154,15 @@ bị hỏi bẻ ở Q&A.
 | Phần | Trạng thái |
 | --- | --- |
 | Ba giao diện, 9 route, các quy tắc nghiệp vụ | Chạy được |
-| Kiểm chứng | `tsc -b` và `vite build` pass; chạy tay trọn kịch bản demo trên browser |
-| Dữ liệu | Hiện là mock trong browser; backend FastAPI + PostgreSQL đang làm ở nhánh riêng |
-| Chưa có | Test tự động, SSE thật (đang polling), deploy công khai |
+| Backend | Có thật trong repo: `backend/app` (FastAPI, domain, services, security, seed), `backend/alembic` migration, `docker-compose.yml` cho PostgreSQL |
+| Contract | `contracts/openapi.yaml` có, kèm `examples/` và `generated/` |
+| Frontend mặc định | `VITE_USE_MOCK=0` — tức chạy **live** sang FastAPI, mock chỉ là đường dự phòng |
+| Test | `backend/tests` có unit, integration và contract; `frontend` có Vitest + MSW ở nhánh `claude/frontend-polish-795da0` (81 test) chưa merge |
+| Demo đang chạy | Cloudflare quick tunnel, URL tạm, máy nhóm tự host |
 
-Nói thẳng: "quy tắc nghiệp vụ đã cưỡng chế ở tầng dữ liệu, nên khi nối FastAPI
-vào thì UI không phải sửa — API client đã viết theo đúng contract."
+Nói thẳng điều này nếu bị hỏi: quy tắc nghiệp vụ được cưỡng chế ở server và DB,
+không phải ẩn ở UI. Và nói rõ phần nào nhóm **đã tự chạy** so với phần nào chỉ có
+trong repo — đừng nói "test pass" cho bộ test chưa bấm chạy trước mặt hội đồng.
 
 ---
 
@@ -166,7 +176,12 @@ vào thì UI không phải sửa — API client đã viết theo đúng contract
 - **Nhóm sửa lỗi AI tự gây ra**: bản đầu refresh trang là mất đăng nhập nhân viên;
   phát hiện khi chạy thử thật, không phải khi đọc code.
 - **Chỗ AI dễ nói quá**: AI mô tả "đã deploy" khi thực tế chỉ có server local.
-  Nhóm bắt buộc mọi khẳđịnh phải có lệnh đã chạy hoặc lần bấm đã thấy.
+  Nhóm bắt buộc mọi khẳng định phải có lệnh đã chạy hoặc lần bấm đã thấy — slide 7
+  là kết quả của luật đó.
+- **Chia việc để AI không chạm nhau**: contract `contracts/openapi.yaml` viết trước,
+  frontend và backend làm song song trên nhánh riêng, nối lại bằng
+  `docs/frontend-backend-integration.md`. Không có bước này thì hai bên đoán nhau
+  và sửa cùng file.
 
 ---
 
@@ -181,8 +196,10 @@ vào thì UI không phải sửa — API client đã viết theo đúng contract
 | Pha chế thấy giá không? | Không. Dữ liệu trả về cho màn pha chế không có giá và không có payment, chặn ở server chứ không phải ẩn ở UI |
 | Thu tiền hai lần thì sao? | Lần hai trả `BILL_CLOSED`, trong DB vẫn đúng một payment |
 | Sao không dùng SQLite cho nhanh? | Tiền và trạng thái cần lock hàng và transaction thật khi khách hủy đúng lúc pha chế bắt đầu |
-| Đã test chưa? | Chưa có test tự động — nói thẳng. Đã chạy tay trọn kịch bản demo và các case âm: chưa mở ca, món hết hàng, thu tiền khi còn món chưa xong, sai vai trò |
-| Deploy chưa? | Chưa deploy công khai. Có runbook, và đang chạy local cho LAN |
+| Đã test chưa? | Có `backend/tests` (unit, integration, contract) và 81 test frontend ở nhánh chưa merge. Nói rõ cái nào nhóm đã tự chạy; phần chưa chạy thì nói chưa chạy |
+| Deploy chưa? | Chưa deploy theo nghĩa hạ tầng riêng. Đang chạy qua Cloudflare quick tunnel trỏ về máy nhóm: URL tạm, không backup, không rollback. Runbook cho bản thật ở `docs/deploy-frontend-public-backend-local.md` |
+| Frontend có gọi backend thật không? | Có. `VITE_USE_MOCK=0` là mặc định; mock chỉ là đường dự phòng khi backend chưa chạy |
+| Contract ở đâu? | `contracts/openapi.yaml`, có `examples/` và `generated/`; `backend/tests/contract` kiểm OpenAPI khớp examples |
 
 Nguyên tắc Q&A: không nói "đã chạy" cho thứ chưa chạy. Hội đồng trừ điểm vì nói
 quá nhiều hơn là vì thiếu tính năng.

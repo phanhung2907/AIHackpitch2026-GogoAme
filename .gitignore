@@ -1,0 +1,23 @@
+# Local tooling and editor state
+.local-tools/
+.obsidian/
+.agents/
+.codex/
+.claude/
+# Secrets, dependencies, generated outputs
+.env
+.env.*
+!.env.example
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+node_modules/
+dist/
+coverage/
+*.log
+*.tsbuildinfo
+Thumbs.db
+.DS_Store

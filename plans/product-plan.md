@@ -1,6 +1,6 @@
 # TapOrder — PLAN chung frontend, backend và hệ thống
 
-Ngày quyết định: 2026-11-03, Asia/Bangkok. Revision: PLAN-1, checkpoint nghiên cứu reuse/deploy sau S1; còn phần đặc tả FE/BE, contract, task graph và verification ở S2. Đây là kế hoạch, chưa phải bằng chứng phần mềm đã chạy. Phạm vi: hoàn thành PLAN và khảo sát/clone nguồn theo bổ sung của chủ repo; chưa scaffold sản phẩm, chưa chạy hai agent sản phẩm, chưa tạo tài nguyên cloud.
+Ngày quyết định: 2026-11-03, Asia/Bangkok. Revision: PLAN-2, hoàn tất đặc tả kế hoạch frontend/backend, hệ thống, quyền, contract dự kiến, tasks, kiểm thử và demo. Đây là kế hoạch, chưa phải bằng chứng phần mềm đã chạy. Phạm vi lượt này: PLAN; chưa scaffold sản phẩm, chưa chạy hai agent sản phẩm, chưa tạo tài nguyên cloud. Mốc tiếp theo là CONTRACT, không phải triển khai ngay.
 
 Hai ưu tiên bổ sung: **mục 7 — repo có sẵn và kế hoạch tinh chỉnh**, **mục 8 — thủ tục đưa webapp lên Internet**. Toàn bộ PLAN frontend/backend nằm chung file này; context chỉ ghi checkpoint.
 
@@ -131,8 +131,8 @@ Mọi quyền được kiểm tại router dependency + service resource scope, 
 | Vai trò | Landing/navigation | Thành phần chính | Hành vi bị chặn |
 | --- | --- | --- | --- |
 | Khách | `/t/:qrToken`, `/guest/bills/:billId` | Header bàn nổi bật, danh mục món, card giá/còn hàng, nút giỏ, form note, danh sách lượt gọi, trạng thái dạng chữ, tổng tạm, biên nhận | Không sidebar nhân viên, không bảng bàn khác, không nút đổi tiến độ/thu tiền; link staff đưa tới login |
-| Pha chế | `/staff/kitchen`, `/staff/availability` | Hàng đợi FIFO, lọc chờ/đang pha/bàn, tuổi order, món/lượng/note lớn, hai nút bắt đầu/xong theo state; màn bật/tắt còn hàng | Không cột tiền, doanh thu, thanh toán hoặc menu cashier; route cashier bị guard và API 403 |
-| Thu ngân | `/staff/tables`, `/staff/bills/:billId`, `/staff/shifts` | Grid bàn có trạng thái/tổng; bill nhiều lượt, dòng hủy ghi rõ; modal xác nhận số tiền; lịch sử; mở/đóng ca; QR; báo cáo P2 | Không nút làm món/hủy hộ/sửa giá; route kitchen bị guard và API 403 |
+| Pha chế | `/staff/kitchen`, `/staff/kitchen/menu` | Hàng đợi FIFO, lọc chờ/đang pha/bàn, tuổi order, món/lượng/note lớn, hai nút bắt đầu/xong theo state; màn bật/tắt còn hàng | Không cột tiền, doanh thu, thanh toán hoặc menu cashier; route cashier bị guard và API 403 |
+| Thu ngân | `/staff/cashier`, `/staff/cashier/bills/:billId`, `/staff/cashier/shift` | Grid bàn có trạng thái/tổng; bill nhiều lượt, dòng hủy ghi rõ; modal xác nhận số tiền; biên nhận qua bill ID; mở/đóng ca; QR; báo cáo P2 | Không nút làm món/hủy hộ/sửa giá; route kitchen bị guard và API 403 |
 
 Sau login: server trả role, router chuyển đúng landing; truy cập route sai quyền hiện 403 với link quay lại màn được phép. Reload phải khôi phục session trước khi dựng màn, tránh ló nội dung sai role. Login pending khóa nút; 401 thông báo chung, 429 hiện thời gian thử lại. Keyboard focus, label rõ, vùng bấm >= 44 px; không dùng màu làm dấu hiệu duy nhất.
 
@@ -144,7 +144,7 @@ Tất cả ID UUID server tạo; thời gian `timestamptz` UTC, hiển thị Asi
 
 | Bảng | Cột và constraint cốt lõi | Index/query |
 | --- | --- | --- |
-| tables | id PK, number int UNIQUE >0, label varchar(60), qr_token_hash UNIQUE, enabled bool default true, created_at | Token lookup, danh sách bàn theo number |
+| tables | id PK, number int UNIQUE >0, label varchar(60), qr_token_hash UNIQUE, qr_token_encrypted, enabled bool default true, created_at | Hash lookup, encrypted token để cashier xuất lại QR, danh sách theo number |
 | staff_users | id, username varchar(80) UNIQUE, password_hash, role enum barista/cashier, active bool | Login username |
 | sessions | id, token_hash UNIQUE, kind guest/staff, staff_user_id? FK, csrf_hash, expires_at, revoked_at?, created_at; CHECK kind/staff FK tương ứng | Token; expiry cleanup; guest ID dùng session.id |
 | shifts | id, status open/closed, opened_by FK staff, opened_at, closed_by?, closed_at?, version; chỉ 1 open qua partial unique index | Ca hiện tại; closed_at |
@@ -194,7 +194,7 @@ Idempotency áp dụng submit, cancel, status, availability, payment, open/close
 
 ## 6. Seed, phục hồi và giới hạn triển khai
 
-Seed idempotent: bàn 1..5, tối thiểu 3 danh mục/12 món (cà phê, trà, khác), hai user barista/cashier từ env. QR sinh cùng base URL đang chạy, không hardcode localhost cho deployment khác; raw token chỉ có trong output QR được quản lý tại máy demo, không commit. Seed không tự tạo payment/order giả ở mode demo; fixtures tests riêng để kết quả đối soát được. Mỗi lần demo thu ngân mở ca; dùng bill mới thay vì xóa dữ liệu.
+Seed idempotent: **đúng hai bàn số 1 và 3**, tối thiểu 3 danh mục/12 món (cà phê, trà, khác), hai user `barista.demo`/`cashier.demo` từ env. QR sinh cùng base URL đang chạy, không hardcode localhost cho deployment khác; raw token và mật khẩu chỉ trong output local ignored, không commit. Seed không tự tạo payment/order giả ở mode demo; fixtures tests riêng để kết quả đối soát được. Mỗi lần demo thu ngân mở ca; dùng bill mới thay vì xóa dữ liệu.
 
 Migration Alembic từ DB sạch → seed → health → login. Test nâng cấp từ revision liền trước khi có migration thứ hai; review SQL/destructive operations. Backup logical DB trước migration demo có dữ liệu; restore thử ở DB riêng trong rehearsal release nếu có thay schema. Rollback ưu tiên image/commit trước có schema tương thích; destructive migration không tự downgrade/xóa volume. Với migration phá tương thích phải có kế hoạch restore được phê duyệt trong task release. Dữ liệu order/payment giữ toàn bộ trong demo; events/idempotency dọn sau 24 giờ bằng maintenance command explicit, không tự xóa bill/audit. Guest/session hết hạn revoke và purge token theo job, audit vẫn giữ actor reference ẩn danh.
 
@@ -224,7 +224,7 @@ Clone local tương ứng: `.local-tools/references/restaurant-ordering-saas`, `
 | `Orders.tsx`: user từ localStorage; login RPC SQL so sánh hash client cung cấp | Không đáp ứng session/RBAC của TapOrder | Cookie opaque session, Argon2, CSRF, quyền server; không port login/RPC |
 | SQL public INSERT orders `WITH CHECK (TRUE)`; owner policies dựa `auth.uid()` trong khi app có login RPC riêng | Chuỗi identity/RLS cần kiểm chứng, chưa có bằng chứng phân quyền đủ | Không tái sử dụng policies; negative API authorization tests bắt buộc |
 | Trigger order number COUNT + 1 theo ngày; update status nhận string | Race mã order, enum/state không theo TapOrder | Sequence/UUID; state machine + expected_version server |
-| README và package versions lệch; clone không có lockfile | Install/build chưa tái lập | Giữ stack `agent.md`, pin versions và locks mới tại scaffold |
+| README và package versions lệch; có package-lock.json ở SHA pin nhưng chưa chạy npm ci/build | Chưa xác minh clean install/build hoặc compatibility stack đích | Giữ stack `agent.md`, kiểm lock nguồn và khóa dependency stack đích tại scaffold |
 | `Reports.tsx` tính theo order statuses | Chưa đối soát doanh thu thực thu theo ca | Query payments + dòng không hủy, không cộng bill chưa paid |
 
 Đây là khoảng thiếu qua static review, không tuyên bố đã khai thác lỗ hổng. Không copy credential demo/config Supabase của upstream vào context/sản phẩm.
@@ -289,7 +289,7 @@ Tại ngày tra cứu 2026-11-03, Railway Hobby ghi mức subscription $5/tháng
 | 6. Start/health | Entrypoint exec Uvicorn app.main:app, đọc PORT, host 0.0.0.0; health `/api/health/ready`, một worker/replica | DB/schema ready 200; Host guard cho phép health probe provider |
 | 7. Migrate | Settings pre-deploy `uv run --no-sync alembic upgrade head` từ `/app/backend`, timeout 300s | Exit 0 mới chuyển traffic, lỗi thì dừng release; không migration trong image build |
 | 8. URL HTTPS | Settings → Networking/Public Networking → Generate Domain; lấy domain thật, set PUBLIC_BASE_URL/Origins/Hosts, apply/redeploy | TLS hợp lệ, không mixed content; không dùng domain ví dụ làm bằng chứng |
-| 9. Seed | One-off command đúng service/env `uv run --no-sync python -m app.seed`, sau migration | Menu/5 bàn/hai staff; không orders/payment giả, không in password; gỡ seed env khi không cần |
+| 9. Seed | One-off command đúng service/env `uv run --no-sync python -m app.seed`, sau migration | Menu/hai bàn 1 và 3/hai staff; không orders/payment giả, không in password vào logs; gỡ seed env khi không cần |
 | 10. QR và ca | Cashier đăng nhập, lấy QR bàn 1/3 từ domain public, mở ca | QR không localhost; mở điện thoại mạng di động được; guest không cần account |
 | 11. Smoke public | Kiểm đủ hai bàn/role/SSE/payment/new visit, reload, persistence, quyền sai | Có URL/SHA/time/evidence; không suy cloud pass từ CI |
 | 12. Handoff | Lưu deployment ID, schema revision, DB backup, URL ba UI, rollback SHA, checks/issues; commit/push context | Chỉ gọi deploy thành công khi UI/API/DB thật hoạt động |
@@ -327,3 +327,297 @@ Render Auto-Deploy “After CI Checks Pass” tính cả neutral/skipped là pas
 | CI xanh cloud lỗi | So deployed SHA, env/secrets/network/migration và smoke | Chưa chạy flow hai bàn thật |
 
 Cloud account/quyền GitHub/budget là dependency DEP-02, không chặn PLAN. Lượt này chưa tạo tài nguyên tính phí, chưa public deployment; sau khi app có sẵn dùng runbook trên để thực hiện.
+
+## 9. Danh mục tính năng và đặc tả nghiệp vụ
+
+Các mục 3–6 là system design trước feature design. CONTRACT sẽ chuyển đặc tả dưới thành schema/examples kiểm tra tự động trước khi chia hai agent.
+
+| ID | Actor / ưu tiên / phụ thuộc | Acceptance chính |
+| --- | --- | --- |
+| F01 | Guest / P0 / seed,F02 | QR bàn 1/3 mở menu đúng bàn, không login; token sai/disabled404; GET không tạo bill |
+| F02 | Tất cả / P0 / schema | Guest bootstrap, staff login/logout/session; sai role403, thiếu phiên401, sai scope404 |
+| F03 | Guest / P0 / F01,F02,F08 | Giỏ quantity/note, submit và gọi thêm cùng bill; giá server, atomic, retry không trùng |
+| F04 | Guest / P0 / F03 | Xem bill đã tham gia, hủy dòng mình khi waiting; cancelled không tính tiền |
+| F05 | Barista / P0 / F02,F03 | Queue FIFO mọi bàn, waiting→preparing→done từng dòng; không giá/payment |
+| F06 | Barista / P0 / F02 | Bật/tắt còn hàng; submit kiểm DB; không sửa order đã nhận |
+| F07 | Cashier / P0 / F03,F05,F08 | Tổng từng bàn, xác nhận cash, 1 payment/bill; paid terminal, lượt mới qua QR |
+| F08 | Cashier / P0 / F02 | Một ca mở; không đóng khi còn bill; ngoài ca không nhận order |
+| F09 | Guest/staff / P1 / F03–F08 | SSE đúng scope, fallback polling5s, reconnect/refetch không trùng mutation |
+| F10 | Cashier / P0 / F01,F02 | Xuất QR riêng đúng hai bàn1/3, URL đúng môi trường |
+| F11 | Guest / P2 / F01 | Gợi ý tối đa3 món còn hàng theo giờ/bestseller, không tự thêm giỏ |
+| F12 | Cashier / P2 / F07,F08 | Doanh thu thực thu theo ca, bill paid và top5 món; loại dòng cancelled |
+
+### 9.1 F01/F03 — QR, giỏ và gọi thêm
+
+1. `/t/{qr_token}` bootstrap guest cookie/CSRF, resolve table và current_bill_id nullable. Hiển thị bàn cố định, không input đổi bàn; menu GET không tạo bill.
+2. POST join gửi QR và expected_bill_id nullable. Có bill đúng expected thì tạo membership; chưa có thì trả null, không tạo bill. Nếu bàn vừa đổi lượt trả409 TABLE_VISIT_CHANGED và yêu cầu xác nhận join lượt hiện tại.
+3. Giỏ theo table/visit; mỗi dòng menu_item_id, quantity1..20 integer, note trim<=250, expected_unit_price_vnd; tối đa50 dòng. FE validate Zod, server validate lại; hết hàng giữ dòng cũ có cảnh báo.
+4. Submit gửi QR, expected_bill_id và items, CSRF/Idempotency-Key. Không nhận client total/role/table tùy ý. Service reserve key → khóa ca/table/bill → kiểm ca mở/table enabled/membership/expected bill → khóa menu theo UUID → kiểm giá/availability/giới hạn tiền.
+5. expected_bill_id null chỉ tạo nếu chưa có bill; nếu browser khác vừa tạo, trả TABLE_VISIT_CHANGED để khách xác nhận join rồi gửi lệnh mới. Expected bill thật đã paid trả BILL_CLOSED, không âm thầm chuyển lượt.
+6. Insert bill nếu cần + membership + order/items waiting + version + events/audit/key trong một transaction;201 trả order và bill tổng server. Chỉ clear giỏ sau success/replay. Lỗi trước commit không thêm bill/order/items;409/422 giữ giỏ, highlight món. Timeout giữ payload/key, retry cùng key.
+
+Làm rõ race ở mục5.3: luôn một bill mở; submit thứ hai có thể conflict trước join, sau xác nhận hai order được nhận vào cùng bill. Membership mới cho phép đọc bill; token/số bàn riêng lẻ không cho đọc lịch sử paid.
+
+### 9.2 F04–F06 — hủy, pha chế và hết hàng
+
+- Hủy: kiểm membership và creator trước state; khóa bill/item, compare expected_version; waiting→cancelled, tăng item/bill version, event/audit.200 trả item/tổng mới;409 STATE_CONFLICT/VERSION_CONFLICT refetch, không toast thành công. Không DELETE lịch sử, không hủy một phần quantity.
+- Queue waiting/preparing nhóm order, sort created_at/id tăng, có bàn/quantity/note/tuổi ticket. Chỉ nút Bắt đầu khi waiting, Xong khi preparing; pending disable. Server role + bill open + expected_version + legal transition, cùng lock với hủy. State đổi tăng bill version;409 refetch. DTO không có giá/payment/guest identity.
+- Toggle availability cần barista, expected_version, khóa menu row, event/audit; không sửa snapshots cũ. Guest nhận menu event/refetch; submit vẫn kiểm DB. Toggle commit trước submit thì cả lượt409 ITEM_UNAVAILABLE, không nhận một phần.
+- Audit actor/action/resource/state/version, không note/secrets. Tests PostgreSQL thật cho cancel/start, availability/submit, permission/projection.
+
+### 9.3 F07/F08 — thu tiền và ca
+
+- Cashier mở ca trước demo. Open unique, key cũ replay, key mới khi đã mở409 SHIFT_ALREADY_OPEN. Close khóa exclusive ca, nếu bill mở409 OPEN_BILLS_EXIST; không thay status ca. Sau hết bill mới closed/audit.
+- Bill UI nhóm các lượt, dòng hủy có nhãn và không tính tiền. can_pay từ server; disable thanh toán kèm số dòng chưa xong. Dialog cash/tổng server, không input giảm giá/thuế/giá tự nhập.
+- Payment gửi expected_bill_version, expected_total_vnd, method=cash. Auth/RBAC/CSRF → key → shared lock ca → table/bill lock → kiểm open/version/tổng/tất cả done hoặc cancelled. Conflict409 VERSION_CONFLICT/AMOUNT_CHANGED/ITEMS_NOT_DONE giữ dialog và refetch.
+- Cùng transaction insert payment unique, bill paid/paid_at/total/version, events/audit/key;201 sau commit mới hiện receipt/bàn free. Bill tổng0 vẫn payment0. Retry key cũ cùng payment; key mới BILL_CLOSED. Không refund/reopen.
+- Tab guest cũ giữ receipt read-only; giỏ chưa gửi có cảnh báo, không tự chuyển lượt. Bấm Bắt đầu lượt mới xác nhận bỏ giỏ cũ/resolve/join lại. Quét QR GET chỉ vào menu, bill mới sinh ở submit; paid bill không đổi.
+
+### 9.4 F09–F12 — SSE, reuse QR và sáng tạo
+
+- SSE scoped guest bill/menu, kitchen, cashier. Events chỉ id/type/resource_id/version/time; không nhúng giá vào kitchen. Snapshot HTTP authoritative; mutation ghi event cùng transaction, dispatcher chỉ đọc committed.
+- Snapshot có event_cursor, mở stream từ cursor để không mất khoảng giữa đọc/subscribe. Poll DB nội bộ1s/batch, release connection giữa lần đọc; heartbeat15s; Last-Event-ID hoặc after khi mở stream mới. Cursor ngoài retention gửi reset để refetch. FE dedupe event IDs, debounce150ms, không retry POST vì reconnect.
+- Kiểm session/scope khi connect và mỗi batch; expired/revoked đóng stream, HTTP401. Badge đồng bộ/reconnect/poll5s; stream healthy dừng polling. Event trùng không nhân order/payment.
+- Nguồn QR thật: [RestaurantSettings.tsx tại SHA pin](https://github.com/roshanx0/restaurant-ordering-saas/blob/59216d745ab480cd72f8e5b537374835b33473d0/src/pages/restaurant/RestaurantSettings.tsx) có QRCodeSVG và SVG→canvas→PNG; value hiện `/menu/{restaurant.slug}`, chưa theo bàn. Port render/export thành TableQrCard, ref riêng từng card, server URL `/t/{token}`, filename table-1.png/table-3.png, SVG fallback nếu PNG lỗi; giữ MIT notice. Bỏ Supabase/localStorage auth của nguồn.
+- Để xuất lại QR sau restart: bổ sung `tables.qr_token_encrypted` authenticated encryption, key QR_ENCRYPTION_KEY trong env; hash dùng lookup. Seed sinh token một lần, không rotate khi chạy lại. Cashier-only endpoint giải mã, no-store/audit, không log URL/token. Mất key phải restore key backup hoặc explicit rotate/in lại QR.
+- F11 dùng giờ quán Asia/Bangkok:06–11 cà phê,11–17 trà, còn lại khác; tối đa3 active/available, bổ sung bestseller7 ngày rồi sort seed khi thiếu; UI ghi lý do. Bestseller từ quantities không cancelled thuộc bill paid. F12 SUM payments theo shift, paid bill count, top5 quantity giảm/ID tie-break. Chỉ cashier; P2 không chặn demo nếu P1 đạt.
+
+## 10. Contract dự kiến và baseline
+
+### 10.1 Quy ước
+
+Base `/api/v1`; UUID string, timestamp UTC ISO8601 Z; tiền VND integer truyền **chuỗi decimal**; quantity/version integer. Success `{data:...}`, list `{data:[],meta:{next_cursor:null,limit:50}}`, error `{error:{code,message,details,request_id}}`; unknown fields422, nullable khai rõ, DTO whitelist không serialize ORM.
+
+Cookie staff/guest tách biệt, mutation CSRF+Origin. GET auth/bootstrap cấp preauth cookie/CSRF TTL10 phút, login phải gửi token này/Origin rồi rotate staff session; guest bootstrap POST kiểm Origin chỉ tạo anonymous session/context, không join/tạo bill. Login401 INVALID_CREDENTIALS generic. Rate limits dự kiến login5/phút/IP+username, bootstrap/join30/phút/IP, order10/phút/session, staff mutation60/phút/session;429 Retry-After; memory limiter chấp nhận một worker demo.
+
+Mutation nghiệp vụ mục5.3 có UUID Idempotency-Key; thiếu422.401 khôi phục phiên,403 không retry,404 generic scope,409 refetch/sửa lệnh với key mới,422 field errors,503 rollback retry cùng key. Timeout chưa rõ commit: replay/đối soát trước tạo mới. Replay order cũ đã commit trên bill paid được cho principal gốc; không áp BILL_CLOSED lên replay đã xác thực.
+
+### 10.2 Endpoint inventory
+
+Mọi đường dẫn dưới base trừ health mục3.3. Mutations áp CSRF/key trừ login/bootstrap/logout dùng chính sách phiên riêng.
+
+| Method/path | Quyền | Request | Success / lỗi chính |
+| --- | --- | --- | --- |
+| GET /auth/bootstrap | Public | — |200 csrf_token/preauth cookie |
+| POST /auth/login | Preauth |username,password |200 staff{id,username,role},csrf_token;401/429 |
+| GET /auth/session | Staff |— |200 staff,expires_at,csrf_token;401 |
+| POST /auth/logout | Staff |CSRF |204 revoke/xóa cookie; logout lại Origin hợp lệ204 |
+| POST /guest/bootstrap | Public+Origin |qr_token |200 guest_id,csrf_token,table,current_bill_id nullable;404 |
+| POST /guest/join | Guest+QR |qr_token,expected_bill_id nullable |200 bill_id nullable,membership; TABLE_VISIT_CHANGED |
+| GET /guest/menu | Guest |category_id optional |200 categories/items/version/event_cursor |
+| POST /guest/orders | Guest+QR/membership |expected_bill_id,qr_token,items |201 order/bill; SHIFT_CLOSED/BILL_CLOSED/ITEM_UNAVAILABLE/PRICE_CHANGED |
+| GET /guest/bills/{id} | Membership |— |200 BillDTO;404 |
+| POST /guest/items/{id}/cancel | Creator+membership |expected_version |200 item/bill summary; STATE_CONFLICT |
+| GET /kitchen/queue | Barista |cursor,limit |200 tickets/event_cursor/shift_open, sort created_at/id |
+| PATCH /kitchen/items/{id}/status | Barista |status preparing/done,expected_version |200 item; INVALID_TRANSITION/VERSION_CONFLICT |
+| GET /kitchen/menu | Barista |— |200 active items/availability/version, không giá |
+| PATCH /kitchen/menu/{id}/availability | Barista |available,expected_version |200 item; VERSION_CONFLICT |
+| GET /cashier/tables | Cashier |— |200 bàn1/3,derived status,bill_id,total,version,event_cursor |
+| GET /cashier/bills/{id} | Cashier |— |200 BillDTO/payment nullable |
+| POST /cashier/bills/{id}/payments | Cashier |expected_bill_version,expected_total_vnd,method |201 receipt; ITEMS_NOT_DONE/AMOUNT_CHANGED/BILL_CLOSED |
+| GET /cashier/shifts/current | Cashier |— |200 shift nullable |
+| POST /cashier/shifts | Cashier |{} |201 shift; SHIFT_ALREADY_OPEN |
+| POST /cashier/shifts/{id}/close | Cashier |expected_version |200 shift; OPEN_BILLS_EXIST |
+| GET /cashier/tables/{id}/qr | Cashier |— |200 table_number,url; no-store/audit |
+| GET /guest/bills/{id}/events | Membership |after optional |200 event-stream;401/404 |
+| GET /guest/menu/events | Guest |after optional |200 menu event-stream |
+| GET /kitchen/events | Barista |after optional |200 kitchen/menu events |
+| GET /cashier/events | Cashier |after optional |200 cashier/menu events |
+| GET /guest/recommendations | Guest/P2 |— |200 tối đa3 items/reasons |
+| GET /cashier/shifts/{id}/report | Cashier/P2 |— |200 revenue_vnd,paid_bill_count,top_items |
+
+Queue cursor opaque base64 sort tuple; limit default50,1..100, invalid cursor422. FE event refetch page đầu/merge ID; done/cancelled rời queue nhưng còn bill. Menu/hai bàn không paginate, report top5 cố định. Không thêm CRUD do template có sẵn.
+
+### 10.3 Examples và DTO
+
+IDs dưới chỉ fixtures, không phải IDs/credentials thật. Seed cà phê sữa30.000/trà đào35.000 VND.
+
+```json
+{"qr_token":"<token từ QR>","expected_bill_id":null,"items":[{"menu_item_id":"00000000-0000-4000-8000-000000000001","quantity":2,"note":"Ít đá","expected_unit_price_vnd":"30000"}]}
+```
+
+201 trả `data:{order:{id,order_number,created_at,items:[{id,menu_item_id,name,unit_price_vnd,quantity,note,status,version,is_mine,can_cancel}]},bill:{id,table_number,status,version,total_vnd,can_pay},event_cursor}`. BillDTO gồm id/table_id/table_number/status/version/opened_at/paid_at nullable/total_vnd/can_pay/orders/payment nullable/event_cursor. Kitchen projection bỏ price/total/payment/guest identity. can_pay/can_cancel là server-computed, không cấp quyền guest trả tiền.
+
+```json
+{"expected_bill_version":5,"expected_total_vnd":"60000","method":"cash"}
+```
+
+201 trả `data:{payment:{id,bill_id,shift_id,amount_vnd,method,paid_at},bill:{id,status:"paid",version:6,total_vnd:"60000"},table:{number:1,status:"free"}}`.
+
+```json
+{"error":{"code":"ITEM_UNAVAILABLE","message":"Có món vừa hết hàng. Vui lòng sửa giỏ.","details":{"items":[{"menu_item_id":"00000000-0000-4000-8000-000000000001","reason":"unavailable"}]},"request_id":"req-example"}}
+```
+
+SSE gồm `id:42`, `event:item.updated`, data resource_id/version/occurred_at. Enum events `order.created,item.updated,menu.updated,bill.closed,shift.updated,reset,session.expired`; client refetch bill/queue/tables/menu theo audience. Hủy dùng item.updated, state đọc từ snapshot.
+
+### 10.4 Gate CONTRACT tiếp theo
+
+Coordinator tạo `contracts/openapi.yaml` OpenAPI3.1 và examples success/empty/401/403/404/409/422/429/503, SSE riêng, CONTRACT-1. Canonical YAML sinh FE types bằng generator pin; Pydantic DTO đối chiếu schema/fixtures tự động; `/openapi.json` phục vụ canonical validate. Tests so route registry/method/path/status/security và validate HTTP response thực bằng JSON Schema; không chỉ trả YAML rồi coi API tuân thủ.
+
+Gate validator/examples pass, generated types diff sạch, enums/nullable/error đầy đủ không TODO interface, hai phía cùng revision. Đổi contract: coordinator sửa schema/examples trước, notify owners, regenerate types/mock/design/tests cùng revision trước merge. Hiện **chưa có canonical contract**, PLAN không thay gate này.
+
+## 11. Frontend chi tiết
+
+### 11.1 Route, role, dữ liệu và thao tác
+
+| Route | Actor/layout | Nội dung/API/actions và states |
+| --- | --- | --- |
+| /t/{qr_token} | Guest mobile/header bàn/giỏ sticky |Bootstrap/join/menu; category/search client/MenuCard/NoteDialog/CartDrawer; skeleton, QR error, empty, soldout, price conflict, submit pending/retry |
+| /guest/bills/{id} | Membership |Timeline lượt/dòng/status/total, hủy dòng mình, gọi thêm; SSE badge, error/retry, paid receipt/Bắt đầu lượt mới |
+| /staff/login | Staff public form |Username/password/show-hide, pending/error, session redirect role; không role selector |
+| /staff/kitchen | Barista |FIFO tickets bàn/note/qty/time, Bắt đầu/Xong; empty/loading/conflict; không giá/tab thu ngân |
+| /staff/kitchen/menu | Barista |Search/toggle available confirm; pending/rollback conflict; không sửa giá |
+| /staff/cashier | Cashier/sidebar Bàn-QR-Ca |Hai TableCard1/3, rảnh/phục vụ/can_pay,total; CTA mở ca; loading/error/retry |
+| /staff/cashier/bills/{id} | Cashier |Chi tiết lượt/cancelled/tổng, PaymentDialog/receipt; chặn chưa xong, conflict refetch |
+| /staff/cashier/qr | Cashier |Hai QR card/copy link/download SVG/PNG, no-store, export fallback |
+| /staff/cashier/shift | Cashier |Mở/đóng ca, cảnh báo bill mở; P2 report thực, không dashboard giả |
+| /403 và not-found | Tất cả |Thông báo và link về đúng principal, không lộ cache cũ |
+
+Guard loader đọc server session; sidebar theo role chỉ UX, API vẫn cưỡng chế. Guest/staff cookies độc lập; hai staff khác role dùng browser profiles riêng. CTA có handler thật hoặc không xuất hiện.
+
+### 11.2 Tổ chức, form/cache và mock
+
+- `frontend/src/{routes,components/ui,components/layout,features/guest,features/kitchen,features/cashier,features/auth,api/generated,api/client,mocks,stores/cart}`. Một TanStack Router/design system; UI roshan port chọn lọc.
+- Client fetch credentials same-origin, CSRF theo principal, tiền string. Query key gồm session/principal/table/bill; logout/đổi role clear cache/đóng stream. Zustand giỏ memory; sessionStorage chỉ item/qty/note/table/visit, không QR token/cookie/CSRF. Reload phải resolve visit/đối chiếu giá trước gửi.
+- RHF/Zod login/note/qty; password không trim, note trim250, quantity integer. Không optimistic order/payment/state; success mới clear/invalidate. Pending disable tránh double click nhưng key server vẫn bắt buộc.
+- Submit refetch bill dù SSE chưa đến. Event debounce150ms, một stream/audience, window focus/reconnect refetch; polling5s khi stream mất. QR raw token giữ memory/current route, không đưa analytics/logs.
+- MSW đúng HTTP contract, scenarios normal/two-tables/empty/soldout/price-changed/version-conflict/expired/paid/reconnect. Không page import fixtures; ENABLE_MOCKS chỉ dev/test, production fail nếu bật. Live API lỗi hiện error, không mock fallback.
+- Intl vi-VN hiển thị; tổng authoritative server. Guest360px/staff768px; nút>=44px, focus visible/label, Dialog keyboard/Escape/focus restore, trạng thái có text/icon/live region debounce. Không autoplay âm thanh.
+
+## 12. Backend chi tiết
+
+`backend/app/{main,config,db,models,schemas,api,services,domain,repositories,security,events}`, `alembic/`, `tests/{unit,integration,contract}`. Domain thuần totals/transitions/can_pay/rules; service transaction/key; repository ORM/parameterized SQL; route parse/auth/DTO/status. Không gọi DB/Supabase từ browser.
+
+| Module | Trách nhiệm / DB / tests |
+| --- | --- |
+| auth/security |Argon2/session/preauth/CSRF/RBAC/membership; rotate/revoke/expiry8h và12h; generic login error; cookie/Origin/negative permissions tests |
+| tables/guest |QR hash resolve, cashier decrypt export, join membership, expected visit;404 và TABLE_VISIT_CHANGED; audit export không token |
+| menu |Active menu DTO, kitchen không giá, availability locked/versioned/events; race và XSS note plain text |
+| ordering |Ca/table/bill/menu locks, snapshots/order/items/limits, key; atomic reject/order.created/audit; concurrent/replay/rollback tests |
+| kitchen |Indexed FIFO query/transition locked, state+version+bill open; cancel race và projection tests |
+| billing |Bill snapshot/can_pay/cancel own waiting, immutable receipt; totals exclude cancelled |
+| payments/shifts |Unique payment/open shift, totals/version, close lock; payment+paid atomic; concurrent payments/close-vs-create tests |
+| events |Durable scoped cursor/heartbeat/reset/expiry; batch DB connection ngắn, read-only delivery |
+| reports P2 |Payments shift/top quantities paid, giờ server; không cộng open/cancelled, tests biên06/11/17 |
+
+DB session ngắn/request, transaction explicit commit một lần/service, exceptions rollback/close; SSE không giữ connection suốt stream. FK không cascade financial rows. Active shift unique constant expression WHERE open; bill unique table WHERE open. Queue index order created_at/id, item status/order; report payment shift/paid_at. Timestamps UTC, giờ quán Asia/Bangkok, không clock client.
+
+DB lỗi503/request_id, không partial success; timeout sau commit replay. Runtime DB role không superuser, migration role riêng. Body<=64KB; note plain text; headers Referrer-Policy:no-referrer, path QR redact logs; QR route không third-party analytics/assets. Không tắt CSRF/CORS để chữa integration.
+
+## 13. Luồng sản phẩm A–Z
+
+A migrate/seed hai bàn, cashier login/mở ca/xuất QR. B hai guest browsers mở QR1/3, bootstrap/join/menu/gửi. C barista login/queue/bắt đầu/xong, guest SSE/refetch. D gọi thêm cùng bill hoặc hủy own waiting; conflict lấy trạng thái server. E cashier đọc tổng/thanh toán sau done/cancelled, receipt bất biến. F tab cũ paid read-only, QR menu cho lượt mới, chỉ submit mới sinh bill. G đối soát/đóng ca khi hết bill/logout.
+
+```mermaid
+sequenceDiagram
+  participant G as Khách bàn 1
+  participant A as FastAPI
+  participant D as PostgreSQL
+  participant B as Pha chế
+  participant K as Thu ngân
+  G->>A: Submit và idempotency key
+  A->>D: Lock, validate, order/items/events
+  D-->>A: Commit
+  A-->>G: 201 waiting và tổng server
+  B->>A: PATCH preparing rồi done
+  A->>D: State/version và events commit
+  A-->>G: SSE item.updated
+  G->>A: GET bill snapshot
+  K->>A: Payment với version và tổng
+  A->>D: Lock, validate, payment + paid + event
+  D-->>A: Commit
+  A-->>K: 201 biên nhận
+  A-->>G: SSE bill.closed
+```
+
+Mỗi request là transaction riêng, không giữ submit chờ pha chế/thu tiền. SSE có thể trùng/trễ; snapshot/version authoritative. Lỗi trước commit không ghi order/payment; mất mạng sau commit cần replay/đối soát trước lệnh mới.
+
+## 14. Task graph, ownership và checkpoint Git
+
+| Task | Owner/nhánh dự kiến | Depends | Artifact và done |
+| --- | --- | --- | --- |
+| PLAN-S2 |Coordinator/codex/taporder-plan |S1/source review |File này, DEMO.txt/context; docs checks/commit/push/SHA |
+| C01 |Coordinator/codex/taporder-contract |PLAN-2 |OpenAPI/examples/revision1; validate/types gate |
+| S01 |Coordinator/codex/taporder-scaffold |C01 |Manifests/locks/Compose DB-test/Docker/scripts/CI nền; clean install/checks |
+| FE01 |Frontend agent/codex/taporder-frontend |C01+S01 cùng SHA đã push |frontend/** UI/mock/QR/client; unit/lint/type/build/mock acceptance |
+| BD01 |Backend design agent/codex/taporder-backend-design |C01+S01 cùng SHA |docs/design/{README,system-design,technical-design,data-model,product-flow,test-plan,features/F01..F12}; algorithms/locks/errors/expected DB/testcases reviewed |
+| BE01 |Backend implementation owner/codex/taporder-backend |BD01 reviewed+C01 |backend/** migrations/seed/auth/order/kitchen/payment/SSE; unit→integration PostgreSQL/contract/lint/type |
+| INT01 |Coordinator/codex/taporder-integration |FE01+BE01 cùng contract |Merge/live no mocks, origin/cookies/CSRF/errors, two-table E2E/restart persistence |
+| DEMO01 |Coordinator/codex/taporder-demo |INT01 |QR/local account TXT/rehearsal evidence; local và hosted checks riêng |
+| DEP01–03 |Release owner/khi được giao |DEMO01+quyền cloud/budget |Runbook8/deployed smoke/rollback evidence; không deploy trong PLAN |
+
+Đồ thị PLAN→C01→S01→(FE01 song song BD01)→BE01→INT01→DEMO01→DEP nếu được giao. Chưa chạy hai agent sản phẩm trong task PLAN. Lúc được giao coordinator tạo worktree/nhánh riêng cùng baseline đã push; FE sở hữu frontend, BD docs/design/decisions, coordinator contracts/plans/context tổng. Agent code backend chỉ nhận sau design review, không tự đổi task BD thành implementation.
+
+Mỗi task hoàn chỉnh: checks đúng scope → context agent riêng/HANDOFF/WORKLOG tổng → review/stage đúng file → Conventional Commit → fetch/check divergence → push origin nhánh → local HEAD so ls-remote. Không force/đổi remote/gom file owner khác. Contract đổi qua coordinator/revision/notify, merge contract/scaffold trước FE/BE rồi live gate; merge source chưa phải tích hợp. Không dừng xin phép mỗi mốc đã giao; lượt này dừng đúng scope PLAN.
+
+## 15. Kiểm thử và CI/CD
+
+### 15.1 Acceptance → test và DB hậu điều kiện
+
+| Test | Features/cấp | Fixture/thao tác và kết quả phải đạt |
+| --- | --- | --- |
+| T01 |F01,F10/integration+browser |Decode QR1/3 đúng labels/URL; sai404; GET không thêm bill |
+| T02 |F02/integration |2 staff, wrong role, IDOR, missing/wrong CSRF:401/403/404 và0writes; kitchen không giá/payment trong DTO/stream |
+| T03 |F03/unit+integration |Qty0/21/float,note251,lines51,price/soldout:422/409 và0partial bill/order/items, cart giữ |
+| T04 |F03/concurrent PostgreSQL |2 submit đầu cùng bàn, join sau conflict/gọi thêm:1open bill,2orders khi cùng được nhận, snapshots/tổng đúng |
+| T05 |F03,F07/integration |Same key/payload replay; khác payload409; timeout sau commit:1order/payment |
+| T06 |F04,F05/unit+concurrent |Cancel/start cùng version:1thắng/1conflict, state chỉ cancelled hoặc preparing; guest khác không hủy |
+| T07 |F05/unit+integration |waiting→done/done→waiting409 unchanged; legal chain thành công |
+| T08 |F06/concurrent |Hết hàng commit trước submit409 toàn lượt; order đã nhận không đổi snapshots |
+| T09 |F07/integration |Pay khi waiting/preparing409/0payment; done rồi pay2lần chỉ1payment/paid; tổng0 hợp lệ |
+| T10 |F03,F07/concurrent |Gọi thêm đua pay/stale total/version:serialize, không order vào paid, conflict409 |
+| T11 |F08/integration |Open2ca chỉ1open; close còn bill409 unchanged; paid hết rồi close được |
+| T12 |F09/integration+browser |Commit event, reconnect/cursor cũ/reset/expiry, scoped no leak; duplicate event không duplicate POST |
+| T13 |F01,F07/E2E |Paid bàn1→QR→submit mới:bill ID khác, old paid unchanged; tab cũ BILL_CLOSED |
+| T14 |P2/unit+integration |Giờ06/11/17, unavailable,open/paid/cancelled:rule đúng, report payments/paid only |
+| T15 |Integration/browser+DB |Submit/gọi thêm/reload/restart API/readback:DB còn dữ liệu, mock off, không fallback |
+| T16 |Demo/E2E |2guest contexts+2staff profiles, đủ script mục16 và negative permissions |
+
+Behavior regression fail trước khi practical, unit trước integration; không dùng SQLite/mock để chứng minh locks Postgres. DB test DSN guard, migration từ sạch, test fixtures riêng, không xóa volume dev. Domain totals/transitions/auth mục tiêu coverage>=80% khi cấu hình, không thay concurrency cases. Performance mục3 chưa đo thì ghi chưa đo.
+
+### 15.2 Commands dự kiến tạo ở S01, chưa chạy
+
+| Working directory | Gates dự kiến |
+| --- | --- |
+| frontend/ |npm ci; npm run format:check; npm run lint; npm run typecheck; npm run test:unit; npm run build |
+| backend/ |uv sync --frozen; uv run ruff format --check .; uv run ruff check .; uv run mypy app; uv run pytest tests/unit -q |
+| backend/ với DB test |uv run alembic upgrade head; uv run pytest tests/integration tests/contract -q |
+| root/tools |npm run contract:check; npm run generate:check; docker compose config; docker compose build |
+| e2e/ |npm ci; npm run test:demo, Playwright với API thật/DB biệt lập/mock off |
+
+Commands là interface acceptance cho scaffold, chưa có manifests nên không claim tồn tại/pass. Pin validator/generator trong tools lock; không tải latest ngẫu nhiên. Sinh routes TanStack trước tsc nếu cần. Security gates npm audit --audit-level=high và uv run pip-audit dependency pin; high/critical xử lý hoặc documented exception cụ thể, không auto audit-fix phá locks.
+
+### 15.3 Hosted CI và CD
+
+Chưa pipeline để reuse. S01 tạo GitHub Actions ci.yml: PR/push codex/** và default branch thực đọc từ origin; docs-only docs checks. contents:read, concurrency theo branch. Jobs docs, contract, FE frozen install/check/test/build, BE frozen install/lint/type/unit/integration với PostgreSQL service healthy, critical E2E sau FE/BE/contract, dependency audit. Runtime/images/actions pin khi tạo.
+
+required-gates always đọc needs/path changes: app changes bắt jobs cần thiết success thật; docs-only chỉ pass sau docs check, không biến skipped thành app pass. Fork PR không production secrets, test credentials riêng; cache theo lock hash; reports không cookies/password/QR; không pull_request_target chạy code không tin cậy. Branch protection cần cấu hình remote/quyền, ghi actual checks sau khi tồn tại, không claim YAML đã bật protection.
+
+CD manual release chỉ khi được giao, chọn SHA CI pass, image/migration/ready/smoke/rollback mục8. Push PLAN không deploy. Local checks, hosted CI, deployed acceptance ba trạng thái riêng.
+
+## 16. Demo hai bàn, account TXT và yêu cầu bất ngờ
+
+Hướng dẫn mang đi demo: [DEMO.txt](../DEMO.txt). Public TXT ghi usernames/quy trình, mật khẩu và QR thật trong `.local-tools/demo/accounts.txt` ignored do seed/export tạo ở implementation/demo; không commit secrets. Hiện chưa app/tài khoản thật; không dùng account upstream làm account TapOrder.
+
+Seed đúng bàn1/3; cà phê sữa30.000/trà đào35.000. Rehearsal: DB ready/migrate/seed, env passwords, export TXT riêng đủ account/URLs/QR, decode QR, mở ca. Guest Chrome profileA bàn1, Edge/profileB bàn3; staff profilesC/D để không đè staff cookie.
+
+| Bước | Trình diễn | Quan sát |
+| --- | --- | --- |
+| 1 |A bàn1 gọi2cà phê ít đá; B bàn3 gọi1trà đào |Hai bill60.000/35.000, queue đủ2lượt |
+| 2 |Barista cà phê waiting→preparing→done |Guest bàn1 nhận SSE/refetch; không leak bàn1 sang bàn3 |
+| 3 |Bàn1 gọi thêm1trà đào và làm xong |Cùng bill, tổng95.000; FIFO lượt gọi thêm |
+| 4 |Cashier pay bàn1 cash |1payment95.000, paid/free, bàn3 vẫn35.000 chưa trả |
+| 5 |Mở lại QR1, submit1cà phê |GET chưa tạo bill, submit bill ID mới30.000; old paid95.000 không đổi |
+| 6 |Hủy own waiting, thử sau preparing, toggle hết hàng lúc đang chọn |Hủy chờ được/sau pha409; soldout giữ giỏ,0partial order |
+| 7 |Ngắt/kết nối mạng guest khi barista đổi state |Badge reconnect/poll, refetch đúng, không thêm order; sáng tạo P1 |
+| 8 |P2 chỉ trình diễn nếu đã pass |Không trình bày fixtures/report giả thành live |
+
+Yêu cầu bất ngờ chưa biết, không claim làm sẵn. Chuẩn bị nhánh codex/taporder-demo-change từ demo SHA đã push: ghi yêu cầu/acceptance → contract trước nếu đổi interface → regression fail khi practical → sửa đúng scope → unit/integration/FE gates affected → context/diff/commit/push/SHA → demo before/after. Rehearsal ví dụ đổi luật hủy preparing phải sửa domain/API/can_cancel UI/race tests, không chỉ nút. Refund/split ngoài giới hạn cần chốt tradeoff/scope trước, giữ baseline demo. Rollback code bằng revert/known-good release, không xóa payment.
+
+## 17. Gate bàn giao PLAN và việc tiếp theo
+
+PLAN-2 bao phủ frontend/backend chung file, system trước features, ba role/actions/resource/UI, data/state/race, contract dự kiến/examples/errors, routes/cache/mock, backend algorithms, owners/tasks, tests/CI, reuse QR và demo hai bàn. Không còn quyết định nghiệp vụ chặn CONTRACT; versions/branch protection/cloud budget thuộc task sau.
+
+Gate PLAN: requirements/template review, headings/fences/internal links/diff/secrets/consistency; context; commit/push và verify remote SHA. Mermaid source review, nếu chưa render ghi chưa render. App build/types/lint/unit/integration/hosted CI/deployed checks chưa chạy vì chưa app; PLAN không là bằng chứng demo pass.
+
+Next owner coordinator C01 canonical contract/examples/validation → S01 scaffold/locks/CI → FE01 song song BD01 trên worktrees. Lượt này chỉ PLAN, chưa khởi chạy implementation/deploy.

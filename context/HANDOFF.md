@@ -2,7 +2,7 @@
 
 ## Trạng thái
 
-SETUP hoàn tất. S1 hệ thống TapOrder đã push `9ccdca2` và xác minh SHA. Đang PLAN trên `codex/taporder-plan`: [PLAN chung](../plans/product-plan.md) có scope/system/quyền/data, mục 7 khảo sát/clone 3 repo và mapping tinh chỉnh, mục 8 runbook deploy nhanh Railway/Render. Chưa hoàn thành S2 feature/contract/FE/BE/tests. Chưa app/mock/live, hosted CI hay cloud deploy. Tra Git history/remote để lấy checkpoint mới nhất.
+SETUP và nội dung PLAN-2 hoàn tất trên `codex/taporder-plan`: [PLAN chung](../plans/product-plan.md) đủ system/quyền/data, reuse/deploy, feature/API dự kiến/FE/BE/flows/tasks/tests/CI và demo. [DEMO.txt](../DEMO.txt) có usernames dự kiến, cách xuất mật khẩu/URL thật ra TXT local ignored và script Hội đồng. Đúng hai bàn 1/3. Chưa có app/account thật/mock/live/canonical OpenAPI/hosted CI/cloud deploy. Xem Git history và remote SHA cho checkpoint đã push mới nhất.
 
 ## Đã chuẩn bị
 
@@ -18,6 +18,6 @@ Playbook có 14 link tới source của dự án cũ không tồn tại ở repo
 
 ## Việc tiếp theo
 
-Hoàn tất S2 trong cùng `plans/product-plan.md`: catalog/feature, contract dự kiến, FE/BE, task graph, tests/CI/demo. Chỉ làm PLAN trong lượt giao này; CONTRACT và hai agent sản phẩm thuộc mốc tiếp theo. Chưa tạo canonical OpenAPI hay scaffold.
+C01: tạo canonical OpenAPI/examples/validation từ PLAN-2, chốt CONTRACT-1; tiếp S01 scaffold/locks/CI rồi FE mock/UI song song backend detailed design ở worktrees riêng khi được giao. Lượt này chỉ PLAN, chưa chạy hai agent sản phẩm hay code app.
 
 Nhánh/SHA: tra Git history và remote của checkpoint mới nhất; không nhúng SHA tự tham chiếu vào commit. Nếu remote chưa khớp, báo unsynced.

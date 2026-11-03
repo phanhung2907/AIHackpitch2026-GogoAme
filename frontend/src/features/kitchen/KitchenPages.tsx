@@ -8,8 +8,8 @@ export function KitchenQueuePage() {
   const qc = useQueryClient()
   const queue = useQuery({ queryKey: ['kitchen', 'queue'], queryFn: api.kitchenQueue, refetchInterval: 2000 })
   const advance = useMutation({
-    mutationFn: ({ itemId, status }: { itemId: string; status: 'preparing' | 'done' }) =>
-      api.setItemStatus(itemId, status),
+    mutationFn: ({ itemId, status, version }: { itemId: string; status: 'preparing' | 'done'; version: number }) =>
+      api.setItemStatus(itemId, status, version),
     onSuccess: () => qc.invalidateQueries(),
   })
 
@@ -45,7 +45,7 @@ export function KitchenQueuePage() {
                 <Button
                   className="w-full"
                   disabled={advance.isPending}
-                  onClick={() => advance.mutate({ itemId: t.item_id, status: 'preparing' })}
+                  onClick={() => advance.mutate({ itemId: t.item_id, status: 'preparing', version: t.version })}
                 >
                   Bắt đầu pha
                 </Button>
@@ -53,7 +53,7 @@ export function KitchenQueuePage() {
                 <Button
                   className="w-full"
                   disabled={advance.isPending}
-                  onClick={() => advance.mutate({ itemId: t.item_id, status: 'done' })}
+                  onClick={() => advance.mutate({ itemId: t.item_id, status: 'done', version: t.version })}
                 >
                   Xong
                 </Button>
@@ -71,7 +71,8 @@ export function KitchenMenuPage() {
   const qc = useQueryClient()
   const menu = useQuery({ queryKey: ['kitchen', 'menu'], queryFn: api.kitchenMenu, refetchInterval: 5000 })
   const toggle = useMutation({
-    mutationFn: ({ id, available }: { id: string; available: boolean }) => api.setAvailability(id, available),
+    mutationFn: ({ id, available, version }: { id: string; available: boolean; version: number }) =>
+      api.setAvailability(id, available, version),
     onSuccess: () => qc.invalidateQueries(),
   })
 
@@ -91,7 +92,7 @@ export function KitchenMenuPage() {
             <Button
               variant={m.available ? 'danger' : 'primary'}
               disabled={toggle.isPending}
-              onClick={() => toggle.mutate({ id: m.id, available: !m.available })}
+              onClick={() => toggle.mutate({ id: m.id, available: !m.available, version: m.version })}
             >
               {m.available ? 'Báo hết hàng' : 'Mở bán lại'}
             </Button>

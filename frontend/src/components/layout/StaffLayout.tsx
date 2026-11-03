@@ -1,4 +1,6 @@
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
+import { api } from '../../api/client'
 import { useStaff } from '../../stores/staff'
 import { Button } from '../../lib/ui'
 
@@ -19,6 +21,7 @@ export function StaffLayout({ role }: { role: 'barista' | 'cashier' }) {
   const staff = useStaff((s) => s.staff)
   const setStaff = useStaff((s) => s.setStaff)
   const navigate = useNavigate()
+  const qc = useQueryClient()
 
   if (!staff || staff.role !== role) {
     return (
@@ -59,6 +62,8 @@ export function StaffLayout({ role }: { role: 'barista' | 'cashier' }) {
             variant="ghost"
             className="text-white hover:bg-white/10"
             onClick={() => {
+              void api.logout()
+              qc.clear()
               setStaff(null)
               navigate('/staff/login')
             }}

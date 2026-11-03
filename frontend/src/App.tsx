@@ -22,7 +22,7 @@ function DemoHome() {
         <Card>
           <h2 className="font-semibold">Khách (không cần đăng nhập)</h2>
           <div className="mt-2 flex flex-wrap gap-2">
-            {[1, 2, 3, 4, 5, 6].map((n) => (
+            {[1, 3].map((n) => (
               <Link key={n} to={`/t/t${n}`}>
                 <Button variant="secondary">Bàn {n}</Button>
               </Link>
@@ -31,7 +31,9 @@ function DemoHome() {
         </Card>
         <Card>
           <h2 className="font-semibold">Nhân viên</h2>
-          <p className="text-sm text-slate-500">barista / barista123 · cashier / cashier123</p>
+          <p className="text-sm text-slate-500">
+            barista.demo · cashier.demo — password lấy từ <code>VITE_DEMO_*_PASSWORD</code>, mặc định bằng username
+          </p>
           <Link to="/staff/login">
             <Button className="mt-2">Đăng nhập</Button>
           </Link>

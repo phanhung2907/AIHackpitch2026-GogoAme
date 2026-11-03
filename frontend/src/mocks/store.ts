@@ -18,21 +18,38 @@ interface Db {
   order_seq: number
 }
 
+// DEMO.txt: username dự kiến barista.demo / cashier.demo, password thật lấy từ env
+// khi có backend. Mock chỉ chạy local nên dùng password demo đặt trong .env.example.
 const STAFF: Array<Staff & { password: string }> = [
-  { id: 's1', username: 'barista', password: 'barista123', role: 'barista' },
-  { id: 's2', username: 'cashier', password: 'cashier123', role: 'cashier' },
+  {
+    id: 's1',
+    username: 'barista.demo',
+    password: import.meta.env.VITE_DEMO_BARISTA_PASSWORD ?? 'barista.demo',
+    role: 'barista',
+  },
+  {
+    id: 's2',
+    username: 'cashier.demo',
+    password: import.meta.env.VITE_DEMO_CASHIER_PASSWORD ?? 'cashier.demo',
+    role: 'cashier',
+  },
 ]
 
 function seed(): Db {
+  // Plan §6: tối thiểu 3 danh mục và 12 món; cà phê sữa 30.000, trà đào 35.000.
   const rows: Array<[string, number, string]> = [
     ['Cà phê sữa', 30000, 'Cà phê'],
     ['Cà phê đen', 25000, 'Cà phê'],
     ['Bạc xỉu', 35000, 'Cà phê'],
+    ['Cà phê dừa', 40000, 'Cà phê'],
+    ['Cold brew', 45000, 'Cà phê'],
     ['Trà đào', 35000, 'Trà'],
     ['Trà vải', 35000, 'Trà'],
     ['Trà sữa trân châu', 40000, 'Trà'],
-    ['Bánh mì chảo', 45000, 'Đồ ăn'],
-    ['Bánh flan', 20000, 'Đồ ăn'],
+    ['Trà chanh', 25000, 'Trà'],
+    ['Nước suối', 10000, 'Khác'],
+    ['Bánh mì chảo', 45000, 'Khác'],
+    ['Bánh flan', 20000, 'Khác'],
   ]
   const menu: MenuItem[] = rows.map(([name, unit_price_vnd, category], i) => ({
     id: `m${i + 1}`,
@@ -42,7 +59,8 @@ function seed(): Db {
     available: true,
     version: 1,
   }))
-  const tables: Table[] = [1, 2, 3, 4, 5, 6].map((n) => ({
+  // Plan §6 và DEMO.txt: seed đúng hai bàn số 1 và 3.
+  const tables: Table[] = [1, 3].map((n) => ({
     number: n,
     qr_token: `t${n}`,
     status: 'free',
@@ -144,7 +162,7 @@ export const mock = {
   openShiftAction(): Shift {
     const db = read()
     if (openShift(db)) throw new ApiError('SHIFT_ALREADY_OPEN', 'Ca đang mở.')
-    const s: Shift = { id: uid(), opened_at: new Date().toISOString(), closed_at: null }
+    const s: Shift = { id: uid(), opened_at: new Date().toISOString(), closed_at: null, version: 1 }
     db.shifts.push(s)
     write(db)
     return s
@@ -158,6 +176,7 @@ export const mock = {
     const s = db.shifts.find((x) => x.id === id)
     if (!s) throw new ApiError('NOT_FOUND', 'Không tìm thấy ca.')
     s.closed_at = new Date().toISOString()
+    s.version += 1
     write(db)
     return s
   },
@@ -244,13 +263,16 @@ export const mock = {
   },
 
   // D01: khách chỉ hủy dòng của chính mình khi còn waiting.
-  cancelItem(itemId: string, guestId: string): Bill {
+  cancelItem(itemId: string, guestId: string, expectedVersion: number): Bill {
     const db = read()
     for (const bill of db.bills) {
       for (const item of allItems(bill)) {
         if (item.id !== itemId) continue
         if (bill.status !== 'open') throw new ApiError('BILL_CLOSED', 'Hóa đơn đã thanh toán.')
         if (item.guest_id !== guestId) throw new ApiError('FORBIDDEN', 'Chỉ hủy được món bạn gọi.')
+        if (item.version !== expectedVersion) {
+          throw new ApiError('VERSION_CONFLICT', 'Món vừa được cập nhật. Tải lại rồi thử lại.')
+        }
         if (item.status !== 'waiting') {
           throw new ApiError('STATE_CONFLICT', 'Món đã vào pha chế, không hủy được.')
         }
@@ -294,11 +316,14 @@ export const mock = {
     )
   },
 
-  setItemStatus(itemId: string, status: 'preparing' | 'done'): void {
+  setItemStatus(itemId: string, status: 'preparing' | 'done', expectedVersion: number): void {
     const db = read()
     for (const bill of db.bills) {
       for (const item of allItems(bill)) {
         if (item.id !== itemId) continue
+        if (item.version !== expectedVersion) {
+          throw new ApiError('VERSION_CONFLICT', 'Món vừa được cập nhật. Tải lại hàng đợi.')
+        }
         const ok =
           (item.status === 'waiting' && status === 'preparing') ||
           (item.status === 'preparing' && status === 'done')
@@ -313,10 +338,13 @@ export const mock = {
     throw new ApiError('NOT_FOUND', 'Không tìm thấy món.')
   },
 
-  toggleAvailability(menuItemId: string, available: boolean): MenuItem {
+  toggleAvailability(menuItemId: string, available: boolean, expectedVersion: number): MenuItem {
     const db = read()
     const m = db.menu.find((x) => x.id === menuItemId)
     if (!m) throw new ApiError('NOT_FOUND', 'Không tìm thấy món.')
+    if (m.version !== expectedVersion) {
+      throw new ApiError('VERSION_CONFLICT', 'Món vừa được cập nhật. Tải lại menu.')
+    }
     m.available = available
     m.version += 1
     write(db)
@@ -328,12 +356,15 @@ export const mock = {
   },
 
   // D06/D07: chỉ thu khi mọi món đã xong; một payment duy nhất, không mở lại bill.
-  pay(billId: string, expectedTotal: number): Payment {
+  pay(billId: string, expectedTotal: number, expectedBillVersion: number): Payment {
     const db = read()
     const bill = billOr404(db, billId)
     const shift = openShift(db)
     if (!shift) throw new ApiError('SHIFT_CLOSED', 'Chưa mở ca.')
     if (bill.status === 'paid') throw new ApiError('BILL_CLOSED', 'Hóa đơn đã thanh toán.')
+    if (bill.version !== expectedBillVersion) {
+      throw new ApiError('VERSION_CONFLICT', 'Hóa đơn vừa thay đổi. Tải lại rồi thu tiền.')
+    }
     if (!bill.can_pay) throw new ApiError('ITEMS_NOT_DONE', 'Còn món chưa xong, chưa thu được tiền.')
     if (bill.total_vnd !== expectedTotal) throw new ApiError('AMOUNT_CHANGED', 'Tổng tiền vừa thay đổi. Tải lại.')
     const payment: Payment = {
@@ -374,6 +405,37 @@ export const mock = {
         .sort((a, b) => b.quantity - a.quantity)
         .slice(0, 5),
     }
+  },
+
+  // F11 (plan §9.4): giờ quán Asia/Bangkok 06–11 cà phê, 11–17 trà, còn lại nhóm khác;
+  // thiếu thì bù bằng món bán chạy của các bill đã thanh toán. Tối đa 3 món còn hàng.
+  recommendations(): Array<{ item: MenuItem; reason: string }> {
+    const db = read()
+    const hour = Number(
+      new Date().toLocaleString('en-US', { timeZone: 'Asia/Bangkok', hour: '2-digit', hour12: false }),
+    )
+    const slot = hour >= 6 && hour < 11 ? 'Cà phê' : hour >= 11 && hour < 17 ? 'Trà' : 'Khác'
+    const out: Array<{ item: MenuItem; reason: string }> = []
+    const push = (item: MenuItem, reason: string) => {
+      if (out.length >= 3 || !item.available || out.some((o) => o.item.id === item.id)) return
+      out.push({ item, reason })
+    }
+
+    for (const m of db.menu.filter((x) => x.category === slot)) push(m, `Hợp giờ này (${slot})`)
+
+    const sold = new Map<string, number>()
+    for (const bill of db.bills.filter((b) => b.status === 'paid')) {
+      for (const i of allItems(bill)) {
+        if (i.status === 'cancelled') continue
+        sold.set(i.menu_item_id, (sold.get(i.menu_item_id) ?? 0) + i.quantity)
+      }
+    }
+    for (const [id] of [...sold.entries()].sort((a, b) => b[1] - a[1])) {
+      const m = db.menu.find((x) => x.id === id)
+      if (m) push(m, 'Bán chạy tại quán')
+    }
+    for (const m of db.menu) push(m, 'Món quán gợi ý')
+    return out
   },
 
   login(username: string, password: string): Staff {

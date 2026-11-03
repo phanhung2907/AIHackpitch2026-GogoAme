@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
@@ -63,7 +63,7 @@ export function CashierBillPage() {
   const qc = useQueryClient()
   const bill = useQuery({ queryKey: ['cashier', 'bill', id], queryFn: () => api.cashierBill(id), refetchInterval: 2000 })
   const pay = useMutation({
-    mutationFn: (total: number) => api.pay(id, total),
+    mutationFn: ({ total, version }: { total: number; version: number }) => api.pay(id, total, version),
     onSuccess: () => qc.invalidateQueries(),
   })
 
@@ -118,7 +118,11 @@ export function CashierBillPage() {
         ) : (
           <>
             {/* D06: chỉ thu khi mọi món chưa hủy đã xong. */}
-            <Button className="mt-3 w-full" disabled={!b.can_pay || pay.isPending} onClick={() => pay.mutate(b.total_vnd)}>
+            <Button
+              className="mt-3 w-full"
+              disabled={!b.can_pay || pay.isPending}
+              onClick={() => pay.mutate({ total: b.total_vnd, version: b.version })}
+            >
               {pay.isPending ? 'Đang xác nhận…' : 'Xác nhận đã thu tiền mặt'}
             </Button>
             {!b.can_pay && <p className="mt-2 text-xs text-slate-500">Còn món chưa xong hoặc bàn chưa có món.</p>}
@@ -129,7 +133,7 @@ export function CashierBillPage() {
   )
 }
 
-/** /staff/cashier/qr — QR từng bàn để in dán tại quán. */
+/** /staff/cashier/qr — QR từng bàn, xuất PNG để in; SVG là phương án dự phòng (F10). */
 export function CashierQrPage() {
   const tables = useQuery({ queryKey: ['cashier', 'tables'], queryFn: api.tables })
   const origin = window.location.origin
@@ -138,26 +142,94 @@ export function CashierQrPage() {
     <div className="space-y-4">
       <div>
         <h1 className="text-xl font-bold">QR theo bàn</h1>
-        <p className="text-sm text-slate-500">Mỗi bàn một đường dẫn riêng; quét là vào menu đúng bàn.</p>
+        <p className="text-sm text-slate-500">
+          Mỗi bàn một đường dẫn riêng; quét là vào menu đúng bàn. QR dùng base URL đang chạy.
+        </p>
       </div>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        {(tables.data ?? []).map((t) => {
-          const url = `${origin}/t/${t.qr_token}`
-          return (
-            <Card key={t.number} className="text-center">
-              <p className="font-bold">Bàn {t.number}</p>
-              <div className="my-3 flex justify-center">
-                <QRCodeSVG value={url} size={148} />
-              </div>
-              <p className="break-all text-xs text-slate-500">{url}</p>
-              <Button variant="secondary" className="mt-2 w-full" onClick={() => navigator.clipboard?.writeText(url)}>
-                Copy link
-              </Button>
-            </Card>
-          )
-        })}
+        {(tables.data ?? []).map((t) => (
+          <TableQrCard key={t.number} tableNumber={t.number} url={`${origin}/t/${t.qr_token}`} />
+        ))}
       </div>
     </div>
+  )
+}
+
+function download(href: string, filename: string) {
+  const a = document.createElement('a')
+  a.href = href
+  a.download = filename
+  a.click()
+}
+
+function TableQrCard({ tableNumber, url }: { tableNumber: number; url: string }) {
+  const holder = useRef<HTMLDivElement>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  function svgElement(): SVGSVGElement | null {
+    return holder.current?.querySelector('svg') ?? null
+  }
+
+  function saveSvg() {
+    const svg = svgElement()
+    if (!svg) return setError('Chưa render được QR.')
+    const blob = new Blob([new XMLSerializer().serializeToString(svg)], { type: 'image/svg+xml' })
+    download(URL.createObjectURL(blob), `table-${tableNumber}.svg`)
+  }
+
+  // SVG → canvas → PNG. Nếu canvas lỗi thì rơi về tải SVG thay vì im lặng.
+  function savePng() {
+    const svg = svgElement()
+    if (!svg) return setError('Chưa render được QR.')
+    const source = new XMLSerializer().serializeToString(svg)
+    const img = new Image()
+    img.onload = () => {
+      const canvas = document.createElement('canvas')
+      canvas.width = 512
+      canvas.height = 512
+      const ctx = canvas.getContext('2d')
+      if (!ctx) {
+        setError('Không xuất được PNG, đã tải SVG thay thế.')
+        return saveSvg()
+      }
+      ctx.fillStyle = '#ffffff'
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+      try {
+        download(canvas.toDataURL('image/png'), `table-${tableNumber}.png`)
+        setError(null)
+      } catch {
+        setError('Không xuất được PNG, đã tải SVG thay thế.')
+        saveSvg()
+      }
+    }
+    img.onerror = () => {
+      setError('Không xuất được PNG, đã tải SVG thay thế.')
+      saveSvg()
+    }
+    img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(source)))
+  }
+
+  return (
+    <Card className="text-center">
+      <p className="font-bold">Bàn {tableNumber}</p>
+      <div ref={holder} className="my-3 flex justify-center">
+        <QRCodeSVG value={url} size={160} level="M" includeMargin />
+      </div>
+      <p className="break-all text-xs text-slate-500">{url}</p>
+      {error && <p className="mt-2 text-xs text-amber-700">{error}</p>}
+      <div className="mt-2 grid grid-cols-3 gap-2">
+        <Button variant="secondary" className="px-2 text-xs" onClick={() => navigator.clipboard?.writeText(url)}>
+          Copy
+        </Button>
+        <Button variant="secondary" className="px-2 text-xs" onClick={savePng}>
+          PNG
+        </Button>
+        <Button variant="secondary" className="px-2 text-xs" onClick={saveSvg}>
+          SVG
+        </Button>
+      </div>
+    </Card>
   )
 }
 
@@ -165,7 +237,11 @@ export function CashierQrPage() {
 export function CashierShiftPage() {
   const qc = useQueryClient()
   const shift = useQuery({ queryKey: ['cashier', 'shift'], queryFn: api.shiftCurrent, refetchInterval: 3000 })
-  const report = useQuery({ queryKey: ['cashier', 'report'], queryFn: api.shiftReport, refetchInterval: 3000 })
+  const report = useQuery({
+    queryKey: ['cashier', 'report', shift.data?.id ?? null],
+    queryFn: () => api.shiftReport(shift.data?.id ?? null),
+    refetchInterval: 3000,
+  })
   const [error, setError] = useState<string | null>(null)
 
   const open = useMutation({
@@ -177,7 +253,7 @@ export function CashierShiftPage() {
     onError: (e) => setError(e instanceof ApiError ? e.message : 'Mở ca thất bại.'),
   })
   const close = useMutation({
-    mutationFn: (id: string) => api.closeShift(id),
+    mutationFn: ({ id, version }: { id: string; version: number }) => api.closeShift(id, version),
     onSuccess: () => {
       setError(null)
       qc.invalidateQueries()
@@ -193,7 +269,12 @@ export function CashierShiftPage() {
         {shift.data ? (
           <>
             <p className="text-sm text-slate-500">Ca mở từ {clock(shift.data.opened_at)}</p>
-            <Button variant="danger" className="mt-3 w-full" disabled={close.isPending} onClick={() => close.mutate(shift.data!.id)}>
+            <Button
+              variant="danger"
+              className="mt-3 w-full"
+              disabled={close.isPending}
+              onClick={() => close.mutate({ id: shift.data!.id, version: shift.data!.version })}
+            >
               Đóng ca
             </Button>
           </>

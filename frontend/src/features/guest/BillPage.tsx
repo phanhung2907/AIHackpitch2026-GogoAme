@@ -14,7 +14,7 @@ export function BillPage() {
   const bill = useQuery({ queryKey: ['guest', 'bill', id], queryFn: () => api.bill(id), refetchInterval: 2000 })
 
   const cancel = useMutation({
-    mutationFn: (itemId: string) => api.cancelItem(itemId),
+    mutationFn: ({ itemId, version }: { itemId: string; version: number }) => api.cancelItem(itemId, version),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['guest', 'bill', id] }),
   })
 
@@ -65,7 +65,12 @@ export function BillPage() {
                     <StatusBadge status={item.status} />
                     {/* D01: chỉ dòng của chính phiên khách này và còn chờ mới hủy được. */}
                     {b.status === 'open' && item.status === 'waiting' && item.guest_id === me && (
-                      <Button variant="danger" className="px-3 text-xs" disabled={cancel.isPending} onClick={() => cancel.mutate(item.id)}>
+                      <Button
+                        variant="danger"
+                        className="px-3 text-xs"
+                        disabled={cancel.isPending}
+                        onClick={() => cancel.mutate({ itemId: item.id, version: item.version })}
+                      >
                         Hủy món
                       </Button>
                     )}

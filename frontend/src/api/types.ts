@@ -67,6 +67,7 @@ export interface Shift {
   id: string
   opened_at: string
   closed_at: string | null
+  version: number
 }
 
 export interface Ticket {

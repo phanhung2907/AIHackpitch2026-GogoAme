@@ -12,7 +12,12 @@ npm run dev
 
 Mở http://127.0.0.1:5173 — trang chủ là lối vào nhanh ba vai trò khi demo.
 
-Tài khoản nhân viên (chỉ dùng cho demo, nằm trong mock): `barista` / `barista123`, `cashier` / `cashier123`.
+Seed theo plan §6 và `DEMO.txt`: đúng hai bàn số **1** và **3**, 12 món / 3 danh mục,
+cà phê sữa 30.000 và trà đào 35.000 VND, không seed order/payment giả.
+
+Tài khoản nhân viên: `barista.demo` và `cashier.demo`. Password lấy từ
+`VITE_DEMO_BARISTA_PASSWORD` / `VITE_DEMO_CASHIER_PASSWORD` (`.env.example`), mặc định
+bằng chính username. Backend thật nhận `DEMO_*_PASSWORD` ở phía server, không commit.
 
 ## Chế độ dữ liệu
 
@@ -30,9 +35,9 @@ có `/events`, đổi ở `src/api/client.ts` và các `refetchInterval`.
 
 ## Kịch bản demo bắt buộc
 
-1. Thu ngân đăng nhập → `/staff/cashier/shift` → **Mở ca** (chưa mở ca thì không nhận order).
+1. Thu ngân đăng nhập (`cashier.demo`) → `/staff/cashier/shift` → **Mở ca** (chưa mở ca thì không nhận order).
 2. Cửa sổ A mở `/t/t1`, cửa sổ B mở `/t/t3`; mỗi bên chọn món, ghi chú, **Gửi order**.
-3. Pha chế đăng nhập → `/staff/kitchen` thấy đủ hai bàn theo FIFO → **Bắt đầu pha** → **Xong**;
+3. Pha chế đăng nhập (`barista.demo`) → `/staff/kitchen` thấy đủ hai bàn theo FIFO → **Bắt đầu pha** → **Xong**;
    khách thấy trạng thái đổi trong 2 giây.
 4. Thu ngân → bàn 1 → **Xác nhận đã thu tiền mặt** (nút chỉ bật khi mọi món đã xong).
 5. Mở lại `/t/t1`: vào menu cho lượt mới, bill đã trả tiền không bị sửa (quyết định D02).
@@ -52,6 +57,11 @@ order bị chặn cả lượt kèm tên món (D03), giỏ giữ nguyên.
 | D07 một payment duy nhất, không mở lại bill `paid` | `pay` |
 | D08 hàng đợi FIFO theo `created_at` rồi `id` | `kitchenQueue` |
 
+Mọi mutation gửi `expected_version` và trả `VERSION_CONFLICT` khi dữ liệu vừa đổi; giỏ
+được Zod validate theo plan §9.1 (quantity 1..20, note <= 250, tối đa 50 dòng) trước khi
+gửi, server vẫn validate lại. Khi `VITE_USE_MOCK=0`, client tự thêm `X-CSRF-Token` và
+`Idempotency-Key` cho mutation, và đọc tiền dạng chuỗi decimal theo contract §10.1.
+
 ## Nguồn tham khảo
 
 Bố cục menu/cart/ticket/report tham khảo [roshanx0/restaurant-ordering-saas](https://github.com/roshanx0/restaurant-ordering-saas)
@@ -63,4 +73,9 @@ Bố cục menu/cart/ticket/report tham khảo [roshanx0/restaurant-ordering-saa
 
 - Plan §3.2 chọn TanStack Router; bản này dùng `react-router-dom` để port nhanh theo repo
   tham khảo. Đổi router là việc một task riêng, không chặn demo.
-- Chưa có MSW, Vitest, shadcn/ui, SSE. Chưa chạy test nào; chỉ `tsc -b` và `vite build` đã pass.
+- Chưa có MSW, Vitest, Playwright, shadcn/ui. Chưa chạy test nào; chỉ `tsc -b` và
+  `vite build` đã pass, cộng với click thử luồng khách trên browser.
+- F09 chưa dùng SSE: đang polling 2–3 giây bằng TanStack Query. Khi backend có
+  `/events`, đổi trong `src/api/client.ts` và các `refetchInterval`.
+- F10 đã có tải `table-1.png` / `table-3.png` và SVG dự phòng, nhưng QR token chưa mã hóa
+  (`tables.qr_token_encrypted` là việc của backend).

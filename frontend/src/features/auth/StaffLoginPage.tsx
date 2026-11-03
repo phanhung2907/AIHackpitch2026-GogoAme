@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../../api/client'
+import { firstIssue, loginSchema } from '../../api/schemas'
 import { ApiError } from '../../api/types'
 import { Button, Card, ErrorBox } from '../../lib/ui'
 import { useStaff } from '../../stores/staff'
@@ -15,12 +16,15 @@ export function StaffLoginPage() {
   const [error, setError] = useState<string | null>(null)
 
   const login = useMutation({
-    mutationFn: () => api.login(username, password),
+    mutationFn: () => {
+      const v = loginSchema.parse({ username, password })
+      return api.login(v.username, v.password)
+    },
     onSuccess: (staff) => {
       setStaff(staff)
       navigate(staff.role === 'barista' ? '/staff/kitchen' : '/staff/cashier')
     },
-    onError: (e) => setError(e instanceof ApiError ? e.message : 'Đăng nhập thất bại.'),
+    onError: (e) => setError(firstIssue(e) ?? (e instanceof ApiError ? e.message : 'Đăng nhập thất bại.')),
   })
 
   return (

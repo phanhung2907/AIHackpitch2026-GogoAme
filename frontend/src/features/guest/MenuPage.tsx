@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ShoppingCart } from 'lucide-react'
 import { api } from '../../api/client'
+import { cartSchema, firstIssue, noteSchema } from '../../api/schemas'
 import { ApiError, type MenuItem } from '../../api/types'
 import { useCart } from '../../stores/cart'
 import { Button, Card, Empty, ErrorBox, vnd } from '../../lib/ui'
@@ -23,18 +24,21 @@ export function MenuPage() {
     retry: false,
   })
   const menu = useQuery({ queryKey: ['guest', 'menu'], queryFn: api.menu, refetchInterval: 3000 })
+  const recos = useQuery({ queryKey: ['guest', 'recommendations'], queryFn: api.recommendations, staleTime: 60000 })
 
   const submit = useMutation({
-    mutationFn: () =>
-      api.submitOrder(
-        qrToken,
+    mutationFn: () => {
+      // Zod validate trước khi gửi; server vẫn validate lại (plan §9.1).
+      const lines = cartSchema.parse(
         cart.lines.map((l) => ({
           menu_item_id: l.menu_item_id,
           quantity: l.quantity,
           note: l.note,
           expected_unit_price_vnd: l.unit_price_vnd,
         })),
-      ),
+      )
+      return api.submitOrder(qrToken, lines)
+    },
     onSuccess: (res) => {
       cart.clear()
       setCartOpen(false)
@@ -43,7 +47,7 @@ export function MenuPage() {
       navigate(`/guest/bills/${res.bill_id}`)
     },
     // D03/D04: lỗi cả lượt thì giữ nguyên giỏ để khách sửa rồi gửi lại.
-    onError: (e) => setSubmitError(e instanceof ApiError ? e.message : 'Gửi order thất bại.'),
+    onError: (e) => setSubmitError(firstIssue(e) ?? (e instanceof ApiError ? e.message : 'Gửi order thất bại.')),
   })
 
   const categories = useMemo(() => {
@@ -88,6 +92,22 @@ export function MenuPage() {
           </button>
         ))}
       </div>
+
+      {/* F11: gợi ý theo giờ quán, chỉ hiện ở nhóm "Tất cả", không tự thêm vào giỏ. */}
+      {category === 'Tất cả' && (recos.data ?? []).length > 0 && (
+        <div className="px-4 pb-3">
+          <h2 className="mb-2 text-sm font-semibold text-slate-700">Quán gợi ý cho bạn</h2>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {recos.data!.map((r) => (
+              <div key={r.item.id} className="w-40 shrink-0 rounded-xl border border-amber-200 bg-amber-50 p-3">
+                <p className="truncate font-semibold">{r.item.name}</p>
+                <p className="text-xs text-slate-600">{vnd(r.item.unit_price_vnd)}</p>
+                <p className="mt-1 text-[11px] text-amber-700">{r.reason}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="space-y-3 px-4">
         {menu.isLoading && <p className="text-sm text-slate-500">Đang tải menu…</p>}

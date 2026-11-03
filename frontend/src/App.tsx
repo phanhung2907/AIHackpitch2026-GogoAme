@@ -10,11 +10,18 @@ import {
   CashierShiftPage,
   CashierTablesPage,
 } from './features/cashier/CashierPages'
-import { api } from './api/client'
+import { api, usingMock } from './api/client'
 import { Button, Card } from './lib/ui'
 
 /** Trang chỉ dùng khi demo: lối vào nhanh ba vai trò. */
 function DemoHome() {
+  if (!usingMock) return (
+    <div className="mx-auto max-w-md space-y-4 p-6">
+      <h1 className="text-2xl font-bold">TapOrder</h1>
+      <p>Khách quét QR tại bàn để gọi món. Thu ngân đăng nhập, mở ca và lấy QR tại mục QR.</p>
+      <Link to="/staff/login"><Button>Đăng nhập nhân viên</Button></Link>
+    </div>
+  )
   return (
     <div className="min-h-screen bg-slate-100 p-6">
       <div className="mx-auto max-w-2xl space-y-4">

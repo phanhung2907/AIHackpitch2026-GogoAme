@@ -23,8 +23,8 @@ export function MenuPage() {
     queryFn: () => api.guestBootstrap(qrToken),
     retry: false,
   })
-  const menu = useQuery({ queryKey: ['guest', 'menu'], queryFn: api.menu, refetchInterval: 3000 })
-  const recos = useQuery({ queryKey: ['guest', 'recommendations'], queryFn: api.recommendations, staleTime: 60000 })
+  const menu = useQuery({ queryKey: ['guest', 'menu'], queryFn: api.menu, enabled: !!boot.data, refetchInterval: 3000 })
+  const recos = useQuery({ queryKey: ['guest', 'recommendations'], queryFn: api.recommendations, enabled: !!boot.data, staleTime: 60000 })
 
   const submit = useMutation({
     mutationFn: () => {

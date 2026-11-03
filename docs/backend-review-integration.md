@@ -22,3 +22,12 @@ Chỉ cùng Wi-Fi không làm domain deploy gọi được backend loopback. C�
 ## Xác minh
 
 Không chạy unit/integration/browser test theo yêu cầu. Build/type và diff được ghi ở checkpoint; không claim hosted CI hay deployed acceptance. Review và tích hợp là snapshot backend đang được agent khác xây dựng, giữ nguyên worktree nguồn.
+
+## Trạng thái chạy thật trên máy — cập nhật cuối phiên
+
+- Đã cài npm 12.2.1 từ registry npm chính thức vào .local-tools/npm, lệnh npm tại .local-tools/bin, thêm user PATH cho terminal mới. `npm ci` cài 144 packages. `npm run build --prefix frontend` (TypeScript + Vite) thành công sau thay đổi cuối.
+- Docker PostgreSQL dev đang healthy. Docker build backend bị chậm lúc tải dependencies nên đã dừng build; dùng Python virtualenv sẵn có tại `.local-tools/worktrees/taporder-backend/backend/.venv/Scripts/python.exe` chạy source backend của main.
+- `alembic upgrade head` và `python -m app.seed --export-demo-txt` hoàn tất. Không xóa/rotate dữ liệu cũ. Tài khoản và QR thật nằm tại `.local-tools/demo/accounts.txt` (ignored).
+- Backend Uvicorn đã báo application startup complete trên 127.0.0.1:8000; frontend Vite đang chạy live tại http://10.12.3.127:5173. Mở http://10.12.3.127:5173/staff/login ngay trên máy này hoặc máy cùng Wi-Fi. Chưa chạy HTTP/browser test theo yêu cầu; startup/build không chứng minh luồng nghiệp vụ đã pass.
+- Trình tự demo: cashier mở ca → mục QR → điện thoại quét → gửi món → barista ở profile/browser riêng nhận và hoàn tất → cashier thu tiền → báo cáo ca. Không mở /t/t1 hoặc /t/t3 trong live.
+- Nếu mở terminal mới chưa nhận npm, tại root chạy `$env:PATH = "$PWD/.local-tools/bin;" + $env:PATH`.

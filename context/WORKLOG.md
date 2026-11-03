@@ -94,3 +94,11 @@
 - Trạng thái mock/live: mock bật mặc định, live chưa thử lần nào vì chưa có backend. Mock chỉ đồng bộ trong một browser profile, nên kịch bản "hai trình duyệt" của đề hiện phải là hai cửa sổ cùng profile; hai browser khác nhau cần FastAPI thật.
 - Blockers/thiếu: F09 chưa có SSE (đang polling 2 giây, badge đồng bộ và fallback 5 giây khi mất mạng); QR token chưa mã hóa; chưa có MSW/Vitest/Playwright/shadcn-ui/TanStack Router; chưa có backend, migration, seed server, Docker Compose, canonical OpenAPI, hosted CI, deploy.
 - Next action/owner: backend agent dựng FastAPI theo §10.2 và §12 rồi nối `VITE_USE_MOCK=0`; coordinator chốt CONTRACT-1 để thay client thủ công bằng generated types.
+
+
+## 2026-11-03 — Live frontend/backend integration and local demo startup
+
+- Owner requested static backend review without tests, combine all relevant backend work on main, connect FE mock boundary, push, install npm and demo on this machine. Read routing docs/playbooks and git/tdd/security/deployment/verification skills; user no-tests instruction overrides test gates.
+- Brought backend snapshot from backend worktree plus committed design/contract to main; preserved source worktree and unrelated presentations. Fixed API DTO adapters, join/current visit, cashier QR, cancel permissions, staff session CSRF restore, HTTP LAN UUID fallback, guest fetch ordering and removed live mock entrypoints. Main integration 90747d0 pushed and remote SHA verified at that checkpoint.
+- Installed npm 12.2.1 local + user PATH, npm ci completed, TypeScript/Vite build passed. Python AST parse/diff whitespace passed. No unit/integration/browser/HTTP tests run. Backend image build cancelled while slow downloads; existing venv runs main source. Docker PostgreSQL healthy, Alembic upgrade and seed completed, local Uvicorn startup complete and Vite listening at 10.12.3.127:5173. Ignored accounts/QR export .local-tools/demo/accounts.txt.
+- Demo instructions and limits: docs/backend-review-integration.md. Live runtime starts do not prove business flow acceptance. FE still polling, first kitchen page; deployed host needs proxy/redeploy and is not verified. Final follow-up commit/push SHA is checked after this entry.

@@ -1,3 +1,7 @@
+# Running demo update — 2026-11-03
+
+Npm installed; FE TypeScript/Vite build passed. Backend Uvicorn started on 127.0.0.1:8000 with Docker PostgreSQL; migrate/seed completed. FE live running at http://10.12.3.127:5173. Accounts/QR: ignored .local-tools/demo/accounts.txt. No tests executed by owner request; no browser/HTTP acceptance. Existing deployed frontend still needs API proxy/redeploy. See [demo guide](../docs/backend-review-integration.md), latest section. Previous checkpoint descriptions below are historical.
+
 # Latest integration checkpoint — 2026-11-03
 
 Backend/design/contract snapshot and live FE integration now on main. No tests run by explicit request. Build unavailable: npm/dependencies missing. Backend not started and deployed frontend proxy not configured. See [integration checkpoint](agents/integration-live.md) and [demo guide](../docs/backend-review-integration.md). Earlier entries below describe historical state.

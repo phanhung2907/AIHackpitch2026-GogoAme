@@ -1,6 +1,8 @@
 param([Parameter(Mandatory=$true)][string]$LanIp)
 $ErrorActionPreference = 'Stop'
 Set-Location (Split-Path $PSScriptRoot -Parent)
+$localNpm = Join-Path $PWD '.local-tools/bin'
+if (Test-Path $localNpm) { $env:PATH = $localNpm + ';' + $env:PATH }
 $env:PUBLIC_BASE_URL = "http://${LanIp}:5173"
 $env:ALLOWED_ORIGINS = "http://${LanIp}:5173,http://localhost:5173,http://127.0.0.1:5173"
 $env:COOKIE_SECURE = 'false'

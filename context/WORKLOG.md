@@ -123,3 +123,10 @@ ode.exe` profile Public. Điện thoại cùng wifi `FPT University Quy Nhon 3` 
 - Bảo mật: tunnel chỉ trỏ cổng 5173, không tunnel 5432. URL công khai nên ai có link đều vào được, kể cả tài khoản demo mật khẩu yếu — phải tắt tunnel sau demo.
 - Local checks: `npx tsc -b` và `npm run build` pass trước đó. Chưa có test tự động trên nhánh này. Chưa mở thử từ thiết bị thứ hai qua tunnel.
 - Next action: tắt tunnel khi hết giờ; nếu cần demo thật hai bàn thì nối FastAPI theo `docs/frontend-backend-integration.md` rồi chạy lại cùng-origin.
+
+
+## 2026-11-03 — Chẩn đoán tài khoản bị thay phiên
+
+- Chủ repo xác nhận dùng hai tab cùng trình duyệt cho thu ngân và pha chế. Backend dùng một cookie staff theo host và revoke phiên cũ khi login; tab thứ hai thay phiên tab thứ nhất theo thiết kế. Demo cần browser/profile hoặc thiết bị riêng.
+- Review còn thấy StaffLayout xóa identity/cache trên mọi lỗi GET session. Sửa chỉ xóa khi SESSION_EXPIRED; lỗi khác chặn màn nghiệp vụ, giữ identity và hiện retry. Thêm hướng dẫn dùng profile riêng ngay trang login. Không thay auth/RBAC/cookie backend.
+- Không chạy test theo yêu cầu còn hiệu lực. TypeScript/Vite build và diff review được thực hiện; xem kết quả bàn giao. Không xác nhận luồng đăng nhập/browser hay hosted CI.

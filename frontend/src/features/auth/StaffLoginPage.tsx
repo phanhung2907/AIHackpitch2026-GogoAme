@@ -31,7 +31,7 @@ export function StaffLoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-slate-100 p-4">
       <Card className="w-full max-w-sm">
         <h1 className="text-xl font-bold">TapOrder · Nhân viên</h1>
-        <p className="mb-4 text-sm text-slate-500">Pha chế và thu ngân dùng tài khoản riêng.</p>
+        <p className="mb-4 text-sm text-slate-500">Pha chế và thu ngân dùng tài khoản riêng. Nếu dùng cùng máy, hãy mở hai trình duyệt hoặc profile riêng; hai tab cùng trình duyệt dùng chung phiên.</p>
         <form
           className="space-y-3"
           onSubmit={(e) => {

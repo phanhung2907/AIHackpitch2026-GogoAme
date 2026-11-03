@@ -3,7 +3,8 @@ import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { api, usingMock } from '../../api/client'
 import { useStaff } from '../../stores/staff'
-import { Button } from '../../lib/ui'
+import { Button, ErrorBox } from '../../lib/ui'
+import { ApiError } from '../../api/types'
 
 const LINKS: Record<'barista' | 'cashier', Array<{ to: string; label: string }>> = {
   barista: [
@@ -24,13 +25,26 @@ export function StaffLayout({ role }: { role: 'barista' | 'cashier' }) {
   const navigate = useNavigate()
   const qc = useQueryClient()
   const [restoring, setRestoring] = useState(!usingMock)
+  const [sessionError, setSessionError] = useState<string | null>(null)
+  const [sessionAttempt, setSessionAttempt] = useState(0)
   useEffect(() => {
     if (usingMock) return
     let active = true
-    api.session().then((s) => { if (active) setStaff(s) }).catch(() => { if (active) { setStaff(null); qc.clear() } }).finally(() => { if (active) setRestoring(false) })
+    setRestoring(true)
+    setSessionError(null)
+    api.session().then((s) => { if (active) setStaff(s) }).catch((error: unknown) => {
+      if (!active) return
+      if (error instanceof ApiError && error.code === 'SESSION_EXPIRED') {
+        setStaff(null)
+        qc.clear()
+      } else {
+        setSessionError(error instanceof ApiError ? error.message : 'Không kết nối được máy chủ. Vui lòng thử lại.')
+      }
+    }).finally(() => { if (active) setRestoring(false) })
     return () => { active = false }
-  }, [setStaff, qc])
+  }, [setStaff, qc, sessionAttempt])
   if (restoring) return <p className="p-6">Đang khôi phục phiên…</p>
+  if (sessionError) return <div className="p-6"><ErrorBox message={sessionError} onRetry={() => setSessionAttempt((n) => n + 1)} /></div>
 
 
   if (!staff || staff.role !== role) {

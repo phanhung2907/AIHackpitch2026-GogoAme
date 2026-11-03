@@ -1,3 +1,7 @@
+# Session demo update — 2026-11-03
+
+Owner confirmed cashier/barista in two tabs of same browser: shared staff cookie replaces prior login. Use separate browsers/profiles/devices. StaffLayout now only clears identity for SESSION_EXPIRED; connection/server errors block business UI with retry. Login screen explains browser separation. No tests run by owner request; TypeScript/Vite build passed. Hotspot latest IP is 10.232.251.33; Vite was restarted after hung process and root HTTP returned 200 on loopback and hotspot IP.
+
 # Running demo update — 2026-11-03
 
 Npm installed; FE TypeScript/Vite build passed. Backend Uvicorn started on 127.0.0.1:8000 with Docker PostgreSQL; migrate/seed completed. FE live running at http://10.12.3.127:5173. Accounts/QR: ignored .local-tools/demo/accounts.txt. No tests executed by owner request; no browser/HTTP acceptance. Existing deployed frontend still needs API proxy/redeploy. See [demo guide](../docs/backend-review-integration.md), latest section. Previous checkpoint descriptions below are historical.

@@ -2,7 +2,7 @@
 
 ## Trạng thái
 
-SETUP tài liệu/công cụ đã chuẩn bị; chờ đề bài trước PLAN. Chưa có app/mock/live/backend design hoàn chỉnh. Không có hosted CI/deploy. Trạng thái commit/push lấy từ Git và entry cuối WORKLOG.
+SETUP hoàn tất trong phạm vi công cụ/tài liệu, đã push checkpoint `d2dd422` lên `origin/codex/setup-agent-workflow` và xác minh SHA local/remote khớp. Chờ đề bài trước PLAN. Chưa có app/mock/live/backend design hoàn chỉnh. Không có hosted CI/deploy. Commit bổ sung bàn giao nằm sau checkpoint này; tra Git để lấy HEAD mới nhất.
 
 ## Đã chuẩn bị
 

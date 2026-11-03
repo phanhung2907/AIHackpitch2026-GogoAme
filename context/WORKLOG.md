@@ -23,3 +23,10 @@
 - Ignore check: `.local-tools/ecc`, `.obsidian/workspace.json`, `.env` đều bị ignore. Không đưa ECC source/settings/installer/credentials vào commit.
 - Diff review: scope chỉ tài liệu workflow/templates/context, ignore và playbook có sẵn; không có app hoặc dependency thay đổi. Build/types/lint/application tests N/A; hosted CI/deploy chưa chạy, không claim pass.
 - Tự đánh giá theo skill `agent-self-evaluation`: accuracy 4/5 (cài/version/config đã xác minh, UI chưa mở); completeness 5/5 (hướng dẫn, công cụ, context và templates đủ scope setup); clarity 4/5 (hướng dẫn dài do nhiều gates, có bảng routing); actionability 5/5 (entrypoint và next step cụ thể); conciseness 4/5 (AGENTS tóm tắt có lặp vài quy tắc bắt buộc với agent guide). Trung bình 4.4/5; không có lỗi nghiêm trọng. Cải thiện ưu tiên: UI Obsidian có thể kiểm tra khi cần sử dụng; rút gọn phần lặp nếu workflow lớn thêm. Self-check: đáp ứng setup và không sáng tác đề bài.
+
+## 2026-11-03 — SETUP: checkpoint GitHub đã xác minh
+
+- Commit `d2dd422bfae4c2976de46a78d1d387019a949cd7`: `chore(setup): prepare agent workflow and Obsidian context`, 22 files (bao gồm playbook gốc, không sửa nội dung).
+- Fetch và push thành công tới remote có sẵn, nhánh `codex/setup-agent-workflow`, upstream tracking đã đặt. `git ls-remote` cho nhánh này trùng SHA local; working tree sạch và `git diff --check` không lỗi tại checkpoint.
+- Kết quả: SETUP sẵn sàng nhận đề. Bản cập nhật context này được commit/push riêng; HEAD cuối cùng tra Git history, tránh vòng ghi SHA tự tham chiếu.
+- Next action: chủ repo gửi đề → PLAN chi tiết theo templates/playbook. Chưa chạy agent frontend/backend sản phẩm hoặc app tests/hosted CI/deploy.

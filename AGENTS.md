@@ -22,3 +22,7 @@
 ## Phạm vi hiện tại
 
 SETUP trước khi chủ repo giao đề. Chuẩn bị quy trình/templates/context; chưa triển khai app, chưa chạy hai agent sản phẩm, chưa tự chọn tính năng. Khi nhận đề, bắt đầu PLAN theo `plans/README.md`.
+
+## Cập nhật quy trình nhánh theo chủ repo
+
+Từ yêu cầu ngày 2026-11-03: làm việc trực tiếp trên `main`, đồng bộ `origin/main` trước khi bắt đầu; không tự tạo nhánh `codex/*` cho công việc tiếp theo. Quyết định này thay thế hướng dẫn tạo nhánh/worktree mặc định ở trên khi áp dụng cho agent này. Giữ nguyên nhánh/worktree của agent khác, không tự chuyển hoặc gom công việc của họ. Vẫn review đúng scope, commit/push và xác minh remote SHA; không force push.

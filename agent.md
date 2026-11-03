@@ -65,3 +65,7 @@ Live mode không được im lặng fallback về mock khi API hỏng. Giữ API
 ## CI/CD sau khi có app
 
 Tái sử dụng pipeline nếu có. Khi scaffold app, tạo GitHub Actions phù hợp stack đã chốt: install từ locks, format/lint/typecheck, affected unit/integration với PostgreSQL service, FE build, contract checks cho hai phía; quyền tối thiểu, secrets qua cấu hình bảo vệ. Chốt branch/path filters và required checks. Thiết kế deploy/rollback trong PLAN; không tự triển khai production. SETUP hiện chưa có app nên chưa dựng pipeline giả.
+
+## Cập nhật quy trình nhánh theo chủ repo
+
+Từ yêu cầu ngày 2026-11-03: làm việc trực tiếp trên `main`, đồng bộ `origin/main` trước khi bắt đầu; không tự tạo nhánh `codex/*` cho công việc tiếp theo. Quyết định này thay thế hướng dẫn tạo nhánh/worktree mặc định ở trên khi áp dụng cho agent này. Giữ nguyên nhánh/worktree của agent khác, không tự chuyển hoặc gom công việc của họ. Vẫn review đúng scope, commit/push và xác minh remote SHA; không force push.

@@ -1,0 +1,13 @@
+{
+  "data": {
+    "guest_id": "40000000-0000-4000-8000-000000000001",
+    "csrf_token": "csrf-guest-fixture-token",
+    "expires_at": "2026-11-03T21:00:00Z",
+    "table": {
+      "id": "10000000-0000-4000-8000-000000000001",
+      "number": 1,
+      "label": "Bàn 1"
+    },
+    "current_bill_id": null
+  }
+}

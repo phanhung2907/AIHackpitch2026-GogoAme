@@ -1,0 +1,8 @@
+{
+  "error": {
+    "code": "SHIFT_CLOSED",
+    "message": "Quán hiện chưa mở ca phục vụ.",
+    "details": {},
+    "request_id": "req-409-shift-closed"
+  }
+}

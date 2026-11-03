@@ -1,0 +1,11 @@
+{
+  "error": {
+    "code": "INVALID_TRANSITION",
+    "message": "Chuyển trạng thái pha chế không hợp lệ.",
+    "details": {
+      "current_status": "waiting",
+      "target_status": "done"
+    },
+    "request_id": "req-409-transition"
+  }
+}

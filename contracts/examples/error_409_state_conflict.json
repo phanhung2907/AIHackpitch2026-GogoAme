@@ -1,0 +1,10 @@
+{
+  "error": {
+    "code": "STATE_CONFLICT",
+    "message": "Trạng thái hiện tại không cho phép thực hiện thao tác này.",
+    "details": {
+      "current_status": "preparing"
+    },
+    "request_id": "req-409-state"
+  }
+}

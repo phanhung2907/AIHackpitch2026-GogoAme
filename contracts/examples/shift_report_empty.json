@@ -1,0 +1,16 @@
+{
+  "data": {
+    "shift": {
+      "id": "60000000-0000-4000-8000-000000000001",
+      "status": "open",
+      "opened_at": "2026-11-03T09:00:00Z",
+      "closed_at": null,
+      "version": 1
+    },
+    "revenue_vnd": "0",
+    "paid_bill_count": 0,
+    "top_items": [],
+    "as_of": "2026-11-03T09:30:00Z",
+    "event_cursor": "18"
+  }
+}

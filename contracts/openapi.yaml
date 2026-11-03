@@ -1,0 +1,2062 @@
+openapi: "3.1.0"
+info:
+  title: TapOrder API
+  version: "1.0.0"
+  description: >-
+    Canonical OpenAPI 3.1 contract (CONTRACT-1) for TapOrder modular monolith
+    backend. Covers guest QR capability ordering, barista kitchen queue & menu
+    availability, cashier table/bill/payment/shift/QR management, durable SSE
+    streams, and P2 recommendations/shift reports.
+  x-contract-revision: CONTRACT-1
+servers:
+  - url: http://127.0.0.1:8000
+    description: Local development server
+
+components:
+  securitySchemes:
+    PreauthCookie:
+      type: apiKey
+      in: cookie
+      name: taporder_preauth
+      description: Pre-authentication HttpOnly cookie (10m TTL) for staff login CSRF binding.
+    StaffCookie:
+      type: apiKey
+      in: cookie
+      name: taporder_staff
+      description: Staff session HttpOnly cookie (8h absolute TTL).
+    GuestCookie:
+      type: apiKey
+      in: cookie
+      name: taporder_guest
+      description: Guest anonymous capability HttpOnly cookie (12h absolute TTL).
+    CsrfToken:
+      type: apiKey
+      in: header
+      name: X-CSRF-Token
+      description: Principal-bound CSRF token required on mutating requests.
+
+  parameters:
+    IdempotencyKeyHeader:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: Client-generated UUID v4 idempotency key for business mutations.
+      schema:
+        type: string
+        format: uuid
+    ResourceIdPath:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    AfterCursorQuery:
+      name: after
+      in: query
+      required: false
+      description: Commit-ordered event cursor decimal string.
+      schema:
+        type: string
+        pattern: "^(0|[1-9][0-9]*)$"
+    LastEventIdHeader:
+      name: Last-Event-ID
+      in: header
+      required: false
+      description: Standard SSE reconnect cursor header (takes precedence over after query).
+      schema:
+        type: string
+        pattern: "^(0|[1-9][0-9]*)$"
+
+  schemas:
+    StaffRole:
+      type: string
+      enum: [barista, cashier]
+    BillStatus:
+      type: string
+      enum: [open, paid]
+    ShiftStatus:
+      type: string
+      enum: [open, closed]
+    OrderItemStatus:
+      type: string
+      enum: [waiting, preparing, done, cancelled]
+    KitchenTargetStatus:
+      type: string
+      enum: [preparing, done]
+    TableDerivedStatus:
+      type: string
+      enum: [free, serving, ready_to_pay]
+    PaymentMethod:
+      type: string
+      enum: [cash]
+    RecommendationReason:
+      type: string
+      enum: [time_of_day, bestseller, seed_order]
+    SseEventType:
+      type: string
+      enum:
+        - order.created
+        - item.updated
+        - bill.updated
+        - bill.closed
+        - menu.updated
+        - shift.updated
+        - checkpoint
+        - reset
+        - session_expired
+    ErrorCode:
+      type: string
+      enum:
+        - SESSION_EXPIRED
+        - INVALID_CREDENTIALS
+        - FORBIDDEN
+        - CSRF_INVALID
+        - ORIGIN_INVALID
+        - NOT_FOUND
+        - TABLE_VISIT_CHANGED
+        - BILL_CLOSED
+        - SHIFT_CLOSED
+        - SHIFT_ALREADY_OPEN
+        - OPEN_BILLS_EXIST
+        - ITEM_UNAVAILABLE
+        - PRICE_CHANGED
+        - VERSION_CONFLICT
+        - STATE_CONFLICT
+        - INVALID_TRANSITION
+        - ITEMS_NOT_DONE
+        - AMOUNT_CHANGED
+        - IDEMPOTENCY_CONFLICT
+        - VALIDATION_ERROR
+        - BILL_LIMIT_EXCEEDED
+        - INVALID_CURSOR
+        - RATE_LIMITED
+        - RETRYABLE_CONFLICT
+        - SERVICE_UNAVAILABLE
+        - PAYLOAD_TOO_LARGE
+        - INTERNAL_ERROR
+
+    MoneyVndString:
+      type: string
+      pattern: "^(0|[1-9][0-9]*)$"
+      description: Integer VND formatted as canonical decimal string without decimals or leading zeros.
+    PositiveMoneyVndString:
+      type: string
+      pattern: "^[1-9][0-9]*$"
+      description: Positive integer VND (1..10000000) formatted as canonical decimal string.
+    CursorString:
+      type: string
+      pattern: "^(0|[1-9][0-9]*)$"
+    QrTokenString:
+      type: string
+      minLength: 43
+      maxLength: 43
+      pattern: "^[A-Za-z0-9_-]{43}$"
+
+    ErrorObject:
+      type: object
+      additionalProperties: false
+      required: [code, message, details, request_id]
+      properties:
+        code:
+          $ref: "#/components/schemas/ErrorCode"
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+        request_id:
+          type: string
+
+    ErrorEnvelope:
+      type: object
+      additionalProperties: false
+      required: [error]
+      properties:
+        error:
+          $ref: "#/components/schemas/ErrorObject"
+
+    PaginationMeta:
+      type: object
+      additionalProperties: false
+      required: [next_cursor, limit]
+      properties:
+        next_cursor:
+          type: ["string", "null"]
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+
+    # --- Command Inputs ---
+    LoginInput:
+      type: object
+      additionalProperties: false
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          minLength: 1
+          maxLength: 80
+        password:
+          type: string
+          minLength: 1
+          maxLength: 1024
+
+    BootstrapGuestInput:
+      type: object
+      additionalProperties: false
+      required: [qr_token]
+      properties:
+        qr_token:
+          $ref: "#/components/schemas/QrTokenString"
+
+    JoinInput:
+      type: object
+      additionalProperties: false
+      required: [qr_token, expected_bill_id]
+      properties:
+        qr_token:
+          $ref: "#/components/schemas/QrTokenString"
+        expected_bill_id:
+          type: ["string", "null"]
+          format: uuid
+
+    OrderLineInput:
+      type: object
+      additionalProperties: false
+      required: [menu_item_id, quantity, expected_unit_price_vnd]
+      properties:
+        menu_item_id:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+          minimum: 1
+          maximum: 20
+        note:
+          type: string
+          default: ""
+          maxLength: 250
+        expected_unit_price_vnd:
+          $ref: "#/components/schemas/PositiveMoneyVndString"
+
+    OrderInput:
+      type: object
+      additionalProperties: false
+      required: [qr_token, expected_bill_id, items]
+      properties:
+        qr_token:
+          $ref: "#/components/schemas/QrTokenString"
+        expected_bill_id:
+          type: ["string", "null"]
+          format: uuid
+        items:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            $ref: "#/components/schemas/OrderLineInput"
+
+    ItemVersionInput:
+      type: object
+      additionalProperties: false
+      required: [expected_version]
+      properties:
+        expected_version:
+          type: integer
+          minimum: 1
+
+    ItemStatusInput:
+      type: object
+      additionalProperties: false
+      required: [expected_version, status]
+      properties:
+        expected_version:
+          type: integer
+          minimum: 1
+        status:
+          $ref: "#/components/schemas/KitchenTargetStatus"
+
+    AvailabilityInput:
+      type: object
+      additionalProperties: false
+      required: [expected_version, available]
+      properties:
+        expected_version:
+          type: integer
+          minimum: 1
+        available:
+          type: boolean
+
+    PaymentInput:
+      type: object
+      additionalProperties: false
+      required: [expected_bill_version, expected_total_vnd, method]
+      properties:
+        expected_bill_version:
+          type: integer
+          minimum: 1
+        expected_total_vnd:
+          $ref: "#/components/schemas/MoneyVndString"
+        method:
+          $ref: "#/components/schemas/PaymentMethod"
+
+    OpenShiftInput:
+      type: object
+      additionalProperties: false
+      properties: {}
+
+    CloseShiftInput:
+      type: object
+      additionalProperties: false
+      required: [expected_version]
+      properties:
+        expected_version:
+          type: integer
+          minimum: 1
+
+    # --- Projected DTOs ---
+    StaffDTO:
+      type: object
+      additionalProperties: false
+      required: [id, username, role]
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        role:
+          $ref: "#/components/schemas/StaffRole"
+
+    TableRefDTO:
+      type: object
+      additionalProperties: false
+      required: [id, number, label]
+      properties:
+        id:
+          type: string
+          format: uuid
+        number:
+          type: integer
+          minimum: 1
+        label:
+          type: string
+
+    CategoryDTO:
+      type: object
+      additionalProperties: false
+      required: [id, name, sort_order]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        sort_order:
+          type: integer
+
+    GuestMenuItemDTO:
+      type: object
+      additionalProperties: false
+      required: [id, category_id, name, description, price_vnd, available, version, sort_order]
+      properties:
+        id:
+          type: string
+          format: uuid
+        category_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        price_vnd:
+          $ref: "#/components/schemas/PositiveMoneyVndString"
+        available:
+          type: boolean
+        version:
+          type: integer
+          minimum: 1
+        sort_order:
+          type: integer
+
+    KitchenMenuItemDTO:
+      type: object
+      additionalProperties: false
+      required: [id, category_id, name, available, version, sort_order]
+      properties:
+        id:
+          type: string
+          format: uuid
+        category_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        available:
+          type: boolean
+        version:
+          type: integer
+          minimum: 1
+        sort_order:
+          type: integer
+
+    GuestItemDTO:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - menu_item_id
+        - name
+        - unit_price_vnd
+        - quantity
+        - note
+        - status
+        - version
+        - is_mine
+        - can_cancel
+      properties:
+        id:
+          type: string
+          format: uuid
+        menu_item_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        unit_price_vnd:
+          $ref: "#/components/schemas/PositiveMoneyVndString"
+        quantity:
+          type: integer
+          minimum: 1
+          maximum: 20
+        note:
+          type: string
+        status:
+          $ref: "#/components/schemas/OrderItemStatus"
+        version:
+          type: integer
+          minimum: 1
+        is_mine:
+          type: boolean
+        can_cancel:
+          type: boolean
+
+    CashierItemDTO:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - menu_item_id
+        - name
+        - unit_price_vnd
+        - quantity
+        - note
+        - status
+        - version
+      properties:
+        id:
+          type: string
+          format: uuid
+        menu_item_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        unit_price_vnd:
+          $ref: "#/components/schemas/PositiveMoneyVndString"
+        quantity:
+          type: integer
+          minimum: 1
+          maximum: 20
+        note:
+          type: string
+        status:
+          $ref: "#/components/schemas/OrderItemStatus"
+        version:
+          type: integer
+          minimum: 1
+
+    KitchenItemDTO:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - menu_item_id
+        - name
+        - quantity
+        - note
+        - status
+        - version
+        - started_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        menu_item_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        quantity:
+          type: integer
+          minimum: 1
+          maximum: 20
+        note:
+          type: string
+        status:
+          $ref: "#/components/schemas/OrderItemStatus"
+        version:
+          type: integer
+          minimum: 1
+        started_at:
+          type: ["string", "null"]
+          format: date-time
+
+    GuestOrderDTO:
+      type: object
+      additionalProperties: false
+      required: [id, order_number, created_at, items]
+      properties:
+        id:
+          type: string
+          format: uuid
+        order_number:
+          type: string
+          pattern: "^[1-9][0-9]*$"
+        created_at:
+          type: string
+          format: date-time
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/GuestItemDTO"
+
+    CashierOrderDTO:
+      type: object
+      additionalProperties: false
+      required: [id, order_number, created_at, items]
+      properties:
+        id:
+          type: string
+          format: uuid
+        order_number:
+          type: string
+          pattern: "^[1-9][0-9]*$"
+        created_at:
+          type: string
+          format: date-time
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CashierItemDTO"
+
+    KitchenTicketDTO:
+      type: object
+      additionalProperties: false
+      required: [id, order_number, created_at, table, bill_id, items]
+      properties:
+        id:
+          type: string
+          format: uuid
+        order_number:
+          type: string
+          pattern: "^[1-9][0-9]*$"
+        created_at:
+          type: string
+          format: date-time
+        table:
+          $ref: "#/components/schemas/TableRefDTO"
+        bill_id:
+          type: string
+          format: uuid
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/KitchenItemDTO"
+
+    BillSummaryDTO:
+      type: object
+      additionalProperties: false
+      required: [id, table_number, status, version, total_vnd, can_pay]
+      properties:
+        id:
+          type: string
+          format: uuid
+        table_number:
+          type: integer
+          minimum: 1
+        status:
+          $ref: "#/components/schemas/BillStatus"
+        version:
+          type: integer
+          minimum: 1
+        total_vnd:
+          $ref: "#/components/schemas/MoneyVndString"
+        can_pay:
+          type: boolean
+
+    PaidBillSummaryDTO:
+      type: object
+      additionalProperties: false
+      required: [id, status, version, total_vnd]
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [paid]
+        version:
+          type: integer
+          minimum: 1
+        total_vnd:
+          $ref: "#/components/schemas/MoneyVndString"
+
+    PaymentDTO:
+      type: object
+      additionalProperties: false
+      required: [id, bill_id, shift_id, amount_vnd, method, paid_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        bill_id:
+          type: string
+          format: uuid
+        shift_id:
+          type: string
+          format: uuid
+        amount_vnd:
+          $ref: "#/components/schemas/MoneyVndString"
+        method:
+          $ref: "#/components/schemas/PaymentMethod"
+        paid_at:
+          type: string
+          format: date-time
+
+    GuestBillDTO:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - table_id
+        - table_number
+        - status
+        - version
+        - opened_at
+        - paid_at
+        - total_vnd
+        - can_pay
+        - orders
+        - payment
+        - event_cursor
+      properties:
+        id:
+          type: string
+          format: uuid
+        table_id:
+          type: string
+          format: uuid
+        table_number:
+          type: integer
+          minimum: 1
+        status:
+          $ref: "#/components/schemas/BillStatus"
+        version:
+          type: integer
+          minimum: 1
+        opened_at:
+          type: string
+          format: date-time
+        paid_at:
+          type: ["string", "null"]
+          format: date-time
+        total_vnd:
+          $ref: "#/components/schemas/MoneyVndString"
+        can_pay:
+          type: boolean
+        orders:
+          type: array
+          items:
+            $ref: "#/components/schemas/GuestOrderDTO"
+        payment:
+          anyOf:
+            - $ref: "#/components/schemas/PaymentDTO"
+            - type: "null"
+        event_cursor:
+          $ref: "#/components/schemas/CursorString"
+
+    CashierBillDTO:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - table_id
+        - table_number
+        - status
+        - version
+        - opened_at
+        - paid_at
+        - total_vnd
+        - can_pay
+        - orders
+        - payment
+        - event_cursor
+      properties:
+        id:
+          type: string
+          format: uuid
+        table_id:
+          type: string
+          format: uuid
+        table_number:
+          type: integer
+          minimum: 1
+        status:
+          $ref: "#/components/schemas/BillStatus"
+        version:
+          type: integer
+          minimum: 1
+        opened_at:
+          type: string
+          format: date-time
+        paid_at:
+          type: ["string", "null"]
+          format: date-time
+        total_vnd:
+          $ref: "#/components/schemas/MoneyVndString"
+        can_pay:
+          type: boolean
+        orders:
+          type: array
+          items:
+            $ref: "#/components/schemas/CashierOrderDTO"
+        payment:
+          anyOf:
+            - $ref: "#/components/schemas/PaymentDTO"
+            - type: "null"
+        event_cursor:
+          $ref: "#/components/schemas/CursorString"
+
+    CashierTableDTO:
+      type: object
+      additionalProperties: false
+      required: [id, number, label, status, bill_id, total_vnd, version, can_pay]
+      properties:
+        id:
+          type: string
+          format: uuid
+        number:
+          type: integer
+          minimum: 1
+        label:
+          type: string
+        status:
+          $ref: "#/components/schemas/TableDerivedStatus"
+        bill_id:
+          type: ["string", "null"]
+          format: uuid
+        total_vnd:
+          $ref: "#/components/schemas/MoneyVndString"
+        version:
+          type: ["integer", "null"]
+          minimum: 1
+        can_pay:
+          type: boolean
+
+    ShiftDTO:
+      type: object
+      additionalProperties: false
+      required: [id, status, opened_at, closed_at, version]
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          $ref: "#/components/schemas/ShiftStatus"
+        opened_at:
+          type: string
+          format: date-time
+        closed_at:
+          type: ["string", "null"]
+          format: date-time
+        version:
+          type: integer
+          minimum: 1
+
+    RecommendationEntryDTO:
+      type: object
+      additionalProperties: false
+      required: [item, reason]
+      properties:
+        item:
+          $ref: "#/components/schemas/GuestMenuItemDTO"
+        reason:
+          $ref: "#/components/schemas/RecommendationReason"
+
+    ReportTopItemDTO:
+      type: object
+      additionalProperties: false
+      required: [menu_item_id, name, quantity]
+      properties:
+        menu_item_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        quantity:
+          type: integer
+          minimum: 1
+
+    # --- SSE Event Payloads ---
+    SseBusinessEventData:
+      type: object
+      additionalProperties: false
+      required: [id, type, resource_id, version, occurred_at]
+      properties:
+        id:
+          $ref: "#/components/schemas/CursorString"
+        type:
+          type: string
+          enum:
+            - order.created
+            - item.updated
+            - bill.updated
+            - bill.closed
+            - menu.updated
+            - shift.updated
+        resource_id:
+          type: string
+          format: uuid
+        version:
+          type: integer
+          minimum: 1
+        occurred_at:
+          type: string
+          format: date-time
+
+    SseCheckpointEventData:
+      type: object
+      additionalProperties: false
+      required: [cursor]
+      properties:
+        cursor:
+          $ref: "#/components/schemas/CursorString"
+
+    SseControlEventData:
+      type: object
+      additionalProperties: false
+      required: [reason]
+      properties:
+        reason:
+          type: string
+
+    # --- Response Envelopes ---
+    HealthLiveResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required: [status]
+          properties:
+            status:
+              type: string
+              enum: [ok]
+
+    HealthReadyResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required: [status, schema_revision]
+          properties:
+            status:
+              type: string
+              enum: [ready]
+            schema_revision:
+              type: string
+
+    AuthBootstrapResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required: [csrf_token, expires_at]
+          properties:
+            csrf_token:
+              type: string
+            expires_at:
+              type: string
+              format: date-time
+
+    StaffSessionResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required: [staff, csrf_token, expires_at]
+          properties:
+            staff:
+              $ref: "#/components/schemas/StaffDTO"
+            csrf_token:
+              type: string
+            expires_at:
+              type: string
+              format: date-time
+
+    GuestBootstrapResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required: [guest_id, csrf_token, expires_at, table, current_bill_id]
+          properties:
+            guest_id:
+              type: string
+              format: uuid
+            csrf_token:
+              type: string
+            expires_at:
+              type: string
+              format: date-time
+            table:
+              $ref: "#/components/schemas/TableRefDTO"
+            current_bill_id:
+              type: ["string", "null"]
+              format: uuid
+
+    GuestJoinResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required: [bill_id, membership]
+          properties:
+            bill_id:
+              type: ["string", "null"]
+              format: uuid
+            membership:
+              type: boolean
+
+    GuestMenuResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required: [categories, items, version, event_cursor, shift_open]
+          properties:
+            categories:
+              type: array
+              items:
+                $ref: "#/components/schemas/CategoryDTO"
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/GuestMenuItemDTO"
+            version:
+              $ref: "#/components/schemas/CursorString"
+            event_cursor:
+              $ref: "#/components/schemas/CursorString"
+            shift_open:
+              type: boolean
+
+    OrderSubmitResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required: [order, bill, event_cursor]
+          properties:
+            order:
+              $ref: "#/components/schemas/GuestOrderDTO"
+            bill:
+              $ref: "#/components/schemas/BillSummaryDTO"
+            event_cursor:
+              $ref: "#/components/schemas/CursorString"
+
+    GuestBillResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/GuestBillDTO"
+
+    ItemCancelResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required: [item, bill, event_cursor]
+          properties:
+            item:
+              $ref: "#/components/schemas/GuestItemDTO"
+            bill:
+              $ref: "#/components/schemas/BillSummaryDTO"
+            event_cursor:
+              $ref: "#/components/schemas/CursorString"
+
+    KitchenQueueResponse:
+      type: object
+      additionalProperties: false
+      required: [data, meta, event_cursor, shift_open]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/KitchenTicketDTO"
+        meta:
+          $ref: "#/components/schemas/PaginationMeta"
+        event_cursor:
+          $ref: "#/components/schemas/CursorString"
+        shift_open:
+          type: boolean
+
+    KitchenItemMutationResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required: [item, event_cursor]
+          properties:
+            item:
+              $ref: "#/components/schemas/KitchenItemDTO"
+            event_cursor:
+              $ref: "#/components/schemas/CursorString"
+
+    KitchenMenuResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required: [items, event_cursor, shift_open]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/KitchenMenuItemDTO"
+            event_cursor:
+              $ref: "#/components/schemas/CursorString"
+            shift_open:
+              type: boolean
+
+    KitchenAvailabilityMutationResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required: [item, event_cursor]
+          properties:
+            item:
+              $ref: "#/components/schemas/KitchenMenuItemDTO"
+            event_cursor:
+              $ref: "#/components/schemas/CursorString"
+
+    CashierTablesResponse:
+      type: object
+      additionalProperties: false
+      required: [data, meta, event_cursor]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/CashierTableDTO"
+        meta:
+          $ref: "#/components/schemas/PaginationMeta"
+        event_cursor:
+          $ref: "#/components/schemas/CursorString"
+
+    CashierBillResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/CashierBillDTO"
+
+    PaymentReceiptResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required: [payment, bill, table, event_cursor]
+          properties:
+            payment:
+              $ref: "#/components/schemas/PaymentDTO"
+            bill:
+              $ref: "#/components/schemas/PaidBillSummaryDTO"
+            table:
+              type: object
+              additionalProperties: false
+              required: [number, status]
+              properties:
+                number:
+                  type: integer
+                  minimum: 1
+                status:
+                  type: string
+                  enum: [free]
+            event_cursor:
+              $ref: "#/components/schemas/CursorString"
+
+    CurrentShiftResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required: [shift, event_cursor]
+          properties:
+            shift:
+              anyOf:
+                - $ref: "#/components/schemas/ShiftDTO"
+                - type: "null"
+            event_cursor:
+              $ref: "#/components/schemas/CursorString"
+
+    ShiftMutationResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required: [shift, event_cursor]
+          properties:
+            shift:
+              $ref: "#/components/schemas/ShiftDTO"
+            event_cursor:
+              $ref: "#/components/schemas/CursorString"
+
+    TableQrExportResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required: [table_number, url]
+          properties:
+            table_number:
+              type: integer
+              minimum: 1
+            url:
+              type: string
+              format: uri
+
+    GuestRecommendationsResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required: [items, event_cursor]
+          properties:
+            items:
+              type: array
+              maxItems: 3
+              items:
+                $ref: "#/components/schemas/RecommendationEntryDTO"
+            event_cursor:
+              $ref: "#/components/schemas/CursorString"
+
+    ShiftReportResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required: [shift, revenue_vnd, paid_bill_count, top_items, as_of, event_cursor]
+          properties:
+            shift:
+              $ref: "#/components/schemas/ShiftDTO"
+            revenue_vnd:
+              $ref: "#/components/schemas/MoneyVndString"
+            paid_bill_count:
+              type: integer
+              minimum: 0
+            top_items:
+              type: array
+              maxItems: 5
+              items:
+                $ref: "#/components/schemas/ReportTopItemDTO"
+            as_of:
+              type: string
+              format: date-time
+            event_cursor:
+              $ref: "#/components/schemas/CursorString"
+
+  responses:
+    Error401:
+      description: Unauthorized or expired session
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    Error403:
+      description: Forbidden role, invalid CSRF token, or invalid Origin
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    Error404:
+      description: Resource not found or out of principal scope
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    Error409:
+      description: Domain state, version, visit, or idempotency conflict
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    Error413:
+      description: Request payload exceeds 64KiB limit
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    Error422:
+      description: Validation error, unknown field, or limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    Error429:
+      description: Rate limit exceeded
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    Error503:
+      description: Service unavailable or retryable lock/database conflict
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    SseStream200:
+      description: Commit-ordered Server-Sent Events stream (`text/event-stream`)
+      content:
+        text/event-stream:
+          schema:
+            type: string
+            description: >-
+              SSE stream framing with `id`, `event`, and JSON `data` lines
+              (SseBusinessEventData, SseCheckpointEventData, or SseControlEventData).
+
+paths:
+  /api/health/live:
+    get:
+      operationId: health_live
+      tags: [health]
+      summary: Liveness probe
+      responses:
+        "200":
+          description: Process alive
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthLiveResponse"
+
+  /api/health/ready:
+    get:
+      operationId: health_ready
+      tags: [health]
+      summary: Readiness probe checking PostgreSQL and Alembic head revision
+      responses:
+        "200":
+          description: Database and schema ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthReadyResponse"
+        "503":
+          $ref: "#/components/responses/Error503"
+
+  /api/v1/auth/bootstrap:
+    get:
+      operationId: auth_bootstrap
+      tags: [auth]
+      summary: Issue or reuse pre-authentication cookie and CSRF token for staff login
+      responses:
+        "200":
+          description: Preauth CSRF token and expiry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthBootstrapResponse"
+        "429":
+          $ref: "#/components/responses/Error429"
+
+  /api/v1/auth/login:
+    post:
+      operationId: auth_login
+      tags: [auth]
+      summary: Authenticate staff user (barista or cashier) and rotate session cookie
+      security:
+        - PreauthCookie: []
+          CsrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        "200":
+          description: Authenticated staff session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StaffSessionResponse"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "429":
+          $ref: "#/components/responses/Error429"
+
+  /api/v1/auth/session:
+    get:
+      operationId: auth_session
+      tags: [auth]
+      summary: Read current staff session and CSRF token
+      security:
+        - StaffCookie: []
+      responses:
+        "200":
+          description: Active staff session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StaffSessionResponse"
+        "401":
+          $ref: "#/components/responses/Error401"
+
+  /api/v1/auth/logout:
+    post:
+      operationId: auth_logout
+      tags: [auth]
+      summary: Revoke staff session and clear staff cookie
+      security:
+        - StaffCookie: []
+          CsrfToken: []
+      responses:
+        "204":
+          description: Logged out and staff cookie cleared
+        "403":
+          $ref: "#/components/responses/Error403"
+
+  /api/v1/guest/bootstrap:
+    post:
+      operationId: guest_bootstrap
+      tags: [guest]
+      summary: Resolve table QR token and issue/reuse guest anonymous cookie
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BootstrapGuestInput"
+      responses:
+        "200":
+          description: Guest session, table metadata, and current open bill ID (if any)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GuestBootstrapResponse"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "429":
+          $ref: "#/components/responses/Error429"
+
+  /api/v1/guest/join:
+    post:
+      operationId: guest_join
+      tags: [guest]
+      summary: Confirm table visit and grant guest membership to current open bill
+      security:
+        - GuestCookie: []
+          CsrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JoinInput"
+      responses:
+        "200":
+          description: Visit joined or confirmed empty
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GuestJoinResponse"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "429":
+          $ref: "#/components/responses/Error429"
+
+  /api/v1/guest/menu:
+    get:
+      operationId: guest_menu
+      tags: [guest]
+      summary: Get active menu categories, items, prices, availability, and shift status
+      security:
+        - GuestCookie: []
+      parameters:
+        - name: category_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Guest menu snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GuestMenuResponse"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "422":
+          $ref: "#/components/responses/Error422"
+
+  /api/v1/guest/orders:
+    post:
+      operationId: guest_submit_order
+      tags: [guest]
+      summary: Submit initial order (creating open bill) or add-on order to existing open bill
+      security:
+        - GuestCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKeyHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderInput"
+      responses:
+        "201":
+          description: Order accepted and committed atomically
+          headers:
+            Idempotency-Replayed:
+              schema:
+                type: string
+                enum: ["true"]
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderSubmitResponse"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "429":
+          $ref: "#/components/responses/Error429"
+        "503":
+          $ref: "#/components/responses/Error503"
+
+  /api/v1/guest/bills/{id}:
+    get:
+      operationId: guest_get_bill
+      tags: [guest]
+      summary: Get bill snapshot for a guest session with bill membership
+      security:
+        - GuestCookie: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceIdPath"
+      responses:
+        "200":
+          description: Guest bill snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GuestBillResponse"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "422":
+          $ref: "#/components/responses/Error422"
+
+  /api/v1/guest/items/{id}/cancel:
+    post:
+      operationId: guest_cancel_item
+      tags: [guest]
+      summary: Cancel entire order item line created by this guest session while waiting
+      security:
+        - GuestCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceIdPath"
+        - $ref: "#/components/parameters/IdempotencyKeyHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ItemVersionInput"
+      responses:
+        "200":
+          description: Order item cancelled and bill total updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ItemCancelResponse"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "503":
+          $ref: "#/components/responses/Error503"
+
+  /api/v1/kitchen/queue:
+    get:
+      operationId: kitchen_get_queue
+      tags: [kitchen]
+      summary: Get FIFO kitchen ticket queue (waiting/preparing items only, no monetary fields)
+      security:
+        - StaffCookie: []
+      parameters:
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [waiting, preparing]
+        - name: table_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Paginated FIFO kitchen tickets
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KitchenQueueResponse"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "422":
+          $ref: "#/components/responses/Error422"
+
+  /api/v1/kitchen/items/{id}/status:
+    patch:
+      operationId: kitchen_update_item_status
+      tags: [kitchen]
+      summary: Advance order item state (waiting -> preparing -> done)
+      security:
+        - StaffCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceIdPath"
+        - $ref: "#/components/parameters/IdempotencyKeyHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ItemStatusInput"
+      responses:
+        "200":
+          description: Item status updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KitchenItemMutationResponse"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "503":
+          $ref: "#/components/responses/Error503"
+
+  /api/v1/kitchen/menu:
+    get:
+      operationId: kitchen_get_menu
+      tags: [kitchen]
+      summary: Get active menu items for availability management (no prices)
+      security:
+        - StaffCookie: []
+      responses:
+        "200":
+          description: Kitchen menu snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KitchenMenuResponse"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+
+  /api/v1/kitchen/menu/{id}/availability:
+    patch:
+      operationId: kitchen_update_availability
+      tags: [kitchen]
+      summary: Set menu item availability with optimistic concurrency check
+      security:
+        - StaffCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceIdPath"
+        - $ref: "#/components/parameters/IdempotencyKeyHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AvailabilityInput"
+      responses:
+        "200":
+          description: Menu item availability updated (or 200 no-op if target matches current)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KitchenAvailabilityMutationResponse"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "503":
+          $ref: "#/components/responses/Error503"
+
+  /api/v1/cashier/tables:
+    get:
+      operationId: cashier_get_tables
+      tags: [cashier]
+      summary: Get enabled demo tables (1 and 3) with derived visit status and totals
+      security:
+        - StaffCookie: []
+      responses:
+        "200":
+          description: Cashier table overview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CashierTablesResponse"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+
+  /api/v1/cashier/bills/{id}:
+    get:
+      operationId: cashier_get_bill
+      tags: [cashier]
+      summary: Get full bill details and payment receipt for cashier
+      security:
+        - StaffCookie: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceIdPath"
+      responses:
+        "200":
+          description: Cashier bill snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CashierBillResponse"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "422":
+          $ref: "#/components/responses/Error422"
+
+  /api/v1/cashier/bills/{id}/payments:
+    post:
+      operationId: cashier_create_payment
+      tags: [cashier]
+      summary: Confirm cash payment, close bill as paid, and free table atomically
+      security:
+        - StaffCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceIdPath"
+        - $ref: "#/components/parameters/IdempotencyKeyHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaymentInput"
+      responses:
+        "201":
+          description: Payment recorded and bill marked paid
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentReceiptResponse"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "503":
+          $ref: "#/components/responses/Error503"
+
+  /api/v1/cashier/shifts/current:
+    get:
+      operationId: cashier_get_current_shift
+      tags: [cashier]
+      summary: Get currently open shift or null
+      security:
+        - StaffCookie: []
+      responses:
+        "200":
+          description: Current shift snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CurrentShiftResponse"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+
+  /api/v1/cashier/shifts:
+    post:
+      operationId: cashier_open_shift
+      tags: [cashier]
+      summary: Open a new shift when no shift is currently open
+      security:
+        - StaffCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKeyHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OpenShiftInput"
+      responses:
+        "201":
+          description: Shift opened
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShiftMutationResponse"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "503":
+          $ref: "#/components/responses/Error503"
+
+  /api/v1/cashier/shifts/{id}/close:
+    post:
+      operationId: cashier_close_shift
+      tags: [cashier]
+      summary: Close an open shift when no open bills remain
+      security:
+        - StaffCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceIdPath"
+        - $ref: "#/components/parameters/IdempotencyKeyHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CloseShiftInput"
+      responses:
+        "200":
+          description: Shift closed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShiftMutationResponse"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "503":
+          $ref: "#/components/responses/Error503"
+
+  /api/v1/cashier/tables/{id}/qr:
+    get:
+      operationId: cashier_export_table_qr
+      tags: [cashier]
+      summary: Decrypt and export capability QR URL for a specific table
+      security:
+        - StaffCookie: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceIdPath"
+      responses:
+        "200":
+          description: Table capability QR URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TableQrExportResponse"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "503":
+          $ref: "#/components/responses/Error503"
+
+  /api/v1/guest/bills/{id}/events:
+    get:
+      operationId: guest_bill_events
+      tags: [events]
+      summary: Scoped SSE stream for a specific bill (requires guest membership)
+      security:
+        - GuestCookie: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceIdPath"
+        - $ref: "#/components/parameters/AfterCursorQuery"
+        - $ref: "#/components/parameters/LastEventIdHeader"
+      responses:
+        "200":
+          $ref: "#/components/responses/SseStream200"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "429":
+          $ref: "#/components/responses/Error429"
+
+  /api/v1/guest/menu/events:
+    get:
+      operationId: guest_menu_events
+      tags: [events]
+      summary: SSE stream for guest menu availability and shift changes
+      security:
+        - GuestCookie: []
+      parameters:
+        - $ref: "#/components/parameters/AfterCursorQuery"
+        - $ref: "#/components/parameters/LastEventIdHeader"
+      responses:
+        "200":
+          $ref: "#/components/responses/SseStream200"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "429":
+          $ref: "#/components/responses/Error429"
+
+  /api/v1/kitchen/events:
+    get:
+      operationId: kitchen_events
+      tags: [events]
+      summary: SSE stream for barista kitchen queue, menu availability, and shift changes
+      security:
+        - StaffCookie: []
+      parameters:
+        - $ref: "#/components/parameters/AfterCursorQuery"
+        - $ref: "#/components/parameters/LastEventIdHeader"
+      responses:
+        "200":
+          $ref: "#/components/responses/SseStream200"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "429":
+          $ref: "#/components/responses/Error429"
+
+  /api/v1/cashier/events:
+    get:
+      operationId: cashier_events
+      tags: [events]
+      summary: SSE stream for cashier tables, bills, payments, menu, and shift changes
+      security:
+        - StaffCookie: []
+      parameters:
+        - $ref: "#/components/parameters/AfterCursorQuery"
+        - $ref: "#/components/parameters/LastEventIdHeader"
+      responses:
+        "200":
+          $ref: "#/components/responses/SseStream200"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "429":
+          $ref: "#/components/responses/Error429"
+
+  /api/v1/guest/recommendations:
+    get:
+      operationId: guest_recommendations
+      tags: [guest, p2]
+      summary: Get up to 3 recommended available menu items by time of day and bestsellers (P2)
+      security:
+        - GuestCookie: []
+      responses:
+        "200":
+          description: Recommended items
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GuestRecommendationsResponse"
+        "401":
+          $ref: "#/components/responses/Error401"
+
+  /api/v1/cashier/shifts/{id}/report:
+    get:
+      operationId: cashier_shift_report
+      tags: [cashier, p2]
+      summary: Get confirmed cash revenue, paid bill count, and top 5 items for a shift (P2)
+      security:
+        - StaffCookie: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceIdPath"
+      responses:
+        "200":
+          description: Shift reconciliation report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShiftReportResponse"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "422":
+          $ref: "#/components/responses/Error422"

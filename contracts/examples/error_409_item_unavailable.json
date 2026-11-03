@@ -1,0 +1,15 @@
+{
+  "error": {
+    "code": "ITEM_UNAVAILABLE",
+    "message": "Có món vừa hết hàng. Vui lòng sửa giỏ.",
+    "details": {
+      "items": [
+        {
+          "menu_item_id": "30000000-0000-4000-8000-000000000001",
+          "reason": "unavailable"
+        }
+      ]
+    },
+    "request_id": "req-409-unavailable"
+  }
+}

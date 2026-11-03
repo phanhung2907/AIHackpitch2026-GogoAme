@@ -1,0 +1,10 @@
+{
+  "error": {
+    "code": "TABLE_VISIT_CHANGED",
+    "message": "Phiên bàn đã thay đổi. Vui lòng xác nhận tham gia lượt hiện tại.",
+    "details": {
+      "current_bill_id": "70000000-0000-4000-8000-000000000001"
+    },
+    "request_id": "req-409-visit"
+  }
+}

@@ -16,7 +16,7 @@ Theo yêu cầu thiết kế backend thật kỹ trước khi giao agent khác, 
 
 ## Trạng thái kiểm chứng
 
-Local docs: đủ12features/27endpoints, Mermaid parsed/rendered bằng Mermaid10.9.3+Chrome headless,50nodes/60edges; decisions có nhánh có nhãn, nodes có đường vào/ra hoặc điểm dừng; hình/màu theo glossary. Link/fence/whitespace/diff kiểm ở checkpoint cuối, số lượng trong WORKLOG. SVG từ đúng Mermaid source; renderer/ảnh kiểm tra nằm `.local-tools/design-render/` ignored, không dependency app.
+Local docs: đủ12features/27endpoints, Mermaid parsed/rendered bằng Mermaid10.9.3+Chrome headless,37nodes/43edges; decisions có nhánh có nhãn, nodes có đường vào/ra hoặc điểm dừng; hình/màu theo glossary. Link/fence/whitespace/diff kiểm ở checkpoint cuối, số lượng trong WORKLOG. SVG từ đúng Mermaid source; renderer/ảnh kiểm tra nằm `.local-tools/design-render/` ignored, không dependency app.
 
 Chưa có app/manifests/locks/migrations/canonical OpenAPI/accounts thật/mock/live/hosted CI/cloud deploy. Application unit/integration/lint/type/build chưa chạy và không áp dụng task Markdown; test plan không phải test results. Obsidian/ECC local giữ nguyên như setup. Playbook gốc có14link nguồn dự án khác không tồn tại, không dùng làm bằng chứng TapOrder.
 

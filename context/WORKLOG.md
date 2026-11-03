@@ -1,5 +1,12 @@
 # Worklog
 
+## 2026-11-03 — Vẽ lại Mermaid theo phản hồi render lỗi
+
+- Chủ repo báo sơ đồ render lỗi. Đọc lại product-flow/source renderer/playbook chart và Git; working tree ban đầu sạch, giữ nhánh codex/taporder-backend-design.
+- Vẽ lại một flowchart TD bằng cú pháp cơ bản, bỏ subgraph lồng/nhãn HTML, rút nhãn và giữ37nodes/43edges, nhánh quyết định có nhãn. Giữ các đường gọi thêm/hủy/thanh toán/lượt mới/đóng ca; khách theo dõi ngay sau submit song song pha chế.
+- Render thực bằng Mermaid10.9.3/Chrome headless với htmlLabels=false: SVG thuần không foreignObject; thêm PNG để mở khi trình xem Mermaid không tương thích. Không xác định được renderer phía người dùng nên không claim đã kiểm trực tiếp trình xem đó.
+- Kiểm tra parse/render, graph IDs/branches và diff whitespace; không application tests vì chỉ diagram/docs. Cập nhật handoff/agent note counts; commit/push origin và xác minh SHA ở bước cuối. Không đổi backend design/business contract.
+
 ## 2026-11-03 08:55 Asia/Bangkok — Backend DESIGN-1 để bàn giao agent triển khai
 
 - Chủ repo giao system design lớn trước rồi thiết kế kỹ từng feature trong PLAN, một Mermaid A–Z với mũi tên/object/tên gọi nhất quán; sau đó chủ repo sẽ giao agent khác. Scope chỉ thiết kế, không code/deploy/spawn agent. BD01 được làm trước C01/S01 theo chỉ đạo mới; hai gate đó vẫn cần trước code/parallel FE-BE.

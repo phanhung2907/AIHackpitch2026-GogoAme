@@ -15,6 +15,30 @@ FastAPI đang chạy trên máy của nhóm.
 - Frontend hiện tại chạy độc lập bằng mock (`VITE_USE_MOCK=1`). Nếu chỉ cần cho
   người khác xem UI và bấm thử, mục 1 là đủ và không cần backend.
 
+## 0b. Lần chạy thật đã thực hiện — 2026-11-03
+
+Đã chạy phương án A bằng Cloudflare quick tunnel, không phải phương án B.
+
+- `cloudflared` 2026.10.7 cài qua `winget install --id Cloudflare.cloudflared -e`.
+- `frontend/vite.config.ts` đã có `host: true`, `strictPort: true` và
+  `allowedHosts: ['.trycloudflare.com', '.ngrok-free.app']`, nên không phải truyền cờ khi chạy.
+- Lệnh đã chạy: `cloudflared tunnel --url http://127.0.0.1:5173`, tunnel đăng ký qua QUIC ở `sin12`.
+- URL cấp ra: `https://leader-weighted-africa-carroll.trycloudflare.com`.
+- Kiểm chứng: `curl -sSL https://leader-weighted-africa-carroll.trycloudflare.com/t/t1`
+  trả **200** trong 1,94 giây. Chưa mở thử từ thiết bị thứ hai.
+
+Đây là **FE chạy mock**, backend chưa nối vào tunnel này, nên mỗi người truy cập có
+dữ liệu riêng trong `localStorage` của họ. URL quick tunnel là tạm: tunnel chết thì
+URL đổi, phải sinh lại và set lại `PUBLIC_BASE_URL` trước khi in QR.
+
+Trước đó đã thử LAN cùng wifi và **thất bại**: wifi `FPT University Quy Nhon 3` chặn
+thiết bị nói chuyện trực tiếp (client isolation), dù Vite đã bind mọi interface và
+Windows Firewall có rule Allow cho `D:
+odejs
+ode.exe` ở profile Public. Hotspot
+điện thoại `Xiaomi 14T` cho IP `10.232.251.127` và `curl` tới IP đó trả 200, nhưng
+điện thoại khác vẫn không vào được, nên chuyển sang tunnel.
+
 ## 1. Chỉ cần người khác xem và bấm UI (mock, không backend)
 
 Build tĩnh rồi đưa lên bất kỳ static host. Mỗi người xem có dữ liệu riêng trong

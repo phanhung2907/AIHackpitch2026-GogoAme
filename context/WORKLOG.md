@@ -109,3 +109,17 @@
 - Brought backend snapshot from backend worktree plus committed design/contract to main; preserved source worktree and unrelated presentations. Fixed API DTO adapters, join/current visit, cashier QR, cancel permissions, staff session CSRF restore, HTTP LAN UUID fallback, guest fetch ordering and removed live mock entrypoints. Main integration 90747d0 pushed and remote SHA verified at that checkpoint.
 - Installed npm 12.2.1 local + user PATH, npm ci completed, TypeScript/Vite build passed. Python AST parse/diff whitespace passed. No unit/integration/browser/HTTP tests run. Backend image build cancelled while slow downloads; existing venv runs main source. Docker PostgreSQL healthy, Alembic upgrade and seed completed, local Uvicorn startup complete and Vite listening at 10.12.3.127:5173. Ignored accounts/QR export .local-tools/demo/accounts.txt.
 - Demo instructions and limits: docs/backend-review-integration.md. Live runtime starts do not prove business flow acceptance. FE still polling, first kitchen page; deployed host needs proxy/redeploy and is not verified. Final follow-up commit/push SHA is checked after this entry.
+
+## 2026-11-03 — DEMO: mở UI ra ngoài bằng Cloudflare quick tunnel
+
+- Mục tiêu chủ repo: người khác mở được UI và bấm thử. Nguồn đã đọc: `plans/product-plan.md` §3.1, §3.2, §8.1, §8.6 và `docs/deploy-frontend-public-backend-local.md`.
+- Thử LAN trước: `host: true` trong `frontend/vite.config.ts`, Vite in `Network: http://10.12.3.51:5173/`, `curl` tới IP đó trả 200, firewall có rule Allow cho `D:
+odejs
+ode.exe` profile Public. Điện thoại cùng wifi `FPT University Quy Nhon 3` **không vào được** — kết luận là client isolation của mạng trường, không phải lỗi cấu hình máy.
+- Đổi sang hotspot `Xiaomi 14T`, IP `10.232.251.127`, `curl` 200, điện thoại khác vẫn không vào được.
+- Chuyển sang tunnel: cài `cloudflared` 2026.10.7 bằng winget; chạy `cloudflared tunnel --url http://127.0.0.1:5173`; URL `https://leader-weighted-africa-carroll.trycloudflare.com`; `curl -sSL .../t/t1` trả **200** trong 1,94 giây.
+- Trạng thái mock/live: **mock**. Backend chưa nối vào tunnel này, nên mỗi khách có dữ liệu riêng và kịch bản hai bàn của `DEMO.txt` chưa chạy qua mạng được.
+- Lệch PLAN: §8.1 loại phương án chỉ-FE cho demo đầu và chọn Railway cùng-origin. Tunnel là đường tạm cho demo, không phải deployment: phụ thuộc máy nhóm còn bật, URL tạm, không backup, không health gate, không rollback.
+- Bảo mật: tunnel chỉ trỏ cổng 5173, không tunnel 5432. URL công khai nên ai có link đều vào được, kể cả tài khoản demo mật khẩu yếu — phải tắt tunnel sau demo.
+- Local checks: `npx tsc -b` và `npm run build` pass trước đó. Chưa có test tự động trên nhánh này. Chưa mở thử từ thiết bị thứ hai qua tunnel.
+- Next action: tắt tunnel khi hết giờ; nếu cần demo thật hai bàn thì nối FastAPI theo `docs/frontend-backend-integration.md` rồi chạy lại cùng-origin.

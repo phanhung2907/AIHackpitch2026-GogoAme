@@ -4,4 +4,4 @@ Trước hết đọc playbook PLAN/system/feature/flow và context. Sao chép [
 
 Trình tự: yêu cầu → hệ thống tổng thể → chức năng và luồng → contract baseline → hai agent FE mock + BE detailed design → backend code/test → tích hợp thật → verification/handoff.
 
-Đầu ra thiết kế cần có: `docs/design/README.md`, `system-design.md`, `technical-design.md`, `data-model.md`, `product-flow.md`, `test-plan.md`, `features/Fxx-name.md`; `contracts/openapi.yaml` và `contracts/examples/` do coordinator quản lý. Đây là đường dẫn dự kiến, chưa phải tài liệu thiết kế hoàn tất.
+Đầu ra thiết kế đã có tại [DESIGN-1](../docs/design/README.md): system/technical/data/API, product flow, test plan và đủ F01–F12. Theo yêu cầu chủ repo, hoàn tất thiết kế trước khi giao agent code; chưa có canonical `contracts/openapi.yaml`/examples. Coordinator làm C01 từ API design trước khi scaffold/code hoặc FE/BE song song.

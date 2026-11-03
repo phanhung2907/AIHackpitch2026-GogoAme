@@ -2,6 +2,8 @@
 
 ## Trạng thái
 
+Theo yêu cầu chủ repo, đưa PLAN vào `main`. Trước thao tác remote chưa có main; tạo main từ toàn bộ lịch sử `codex/taporder-plan` tại `0f53293`, giữ nguyên các nhánh cũ và nhánh mặc định remote. Checkpoint này chỉ cập nhật Git/context, chưa triển khai app. Xem remote main và Git history để xác nhận SHA sau push.
+
 SETUP và nội dung PLAN-2 hoàn tất trên `codex/taporder-plan`: [PLAN chung](../plans/product-plan.md) đủ system/quyền/data, reuse/deploy, feature/API dự kiến/FE/BE/flows/tasks/tests/CI và demo. [DEMO.txt](../DEMO.txt) có usernames dự kiến, cách xuất mật khẩu/URL thật ra TXT local ignored và script Hội đồng. Đúng hai bàn 1/3. Chưa có app/account thật/mock/live/canonical OpenAPI/hosted CI/cloud deploy. Xem Git history và remote SHA cho checkpoint đã push mới nhất.
 
 ## Đã chuẩn bị

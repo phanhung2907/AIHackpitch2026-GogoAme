@@ -1,5 +1,11 @@
 # Worklog
 
+## 2026-11-03 — Đưa PLAN vào main
+
+- Chủ repo yêu cầu “merge vô main”. Đọc HANDOFF, Git status/branch/remote/history và skill git-workflow; working tree sạch. Fetch/ls-remote xác nhận chưa có main local/remote, default remote là codex/setup-agent-workflow.
+- Tạo main từ codex/taporder-plan tại 0f53293, chứa toàn bộ lịch sử setup/PLAN; không cần merge commit giả khi main chưa tồn tại. Giữ nguyên các nhánh và default remote, không force push.
+- Scope chỉ context/Git; kiểm diff whitespace và ancestry PLAN, commit context/push main/so SHA remote ở bước cuối. Không có app để chạy build/tests; hosted CI/deploy chưa chạy. Bước tiếp theo vẫn C01 khi được giao.
+
 ## 2026-11-03 08:31 Asia/Bangkok — PLAN S2 hoàn tất nội dung
 
 - Chủ repo nhắc hoàn tất nhanh PLAN chi tiết FE/BE chung Markdown, phân quyền ba role, demo đúng hai bàn và account/demo TXT; chỉ PLAN trong lượt này.

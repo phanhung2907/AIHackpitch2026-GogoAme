@@ -1,5 +1,12 @@
 # Worklog
 
+## 2026-11-03 — Slides quick pitch business và technical
+
+- Theo yêu cầu làm nhanh, tạo presentations/taporder-quick:13slides gồm12pitch+1appendix, PPTX editable/PDF/notes/previews; có luồng A–Z rút gọn, sơ đồ Mermaid gốc và schema PK/FK theo DESIGN-1.
+- Main chưa có docs/design; đọc nguồn bằng git show e04bd4b, không checkout/merge và không sửa frontend/backend. Giữ nguyên README cũ trong presentations/taporder-pitch chưa thuộc task.
+- Đọc skill Presentations/local implementation/design/finalization; dùng runtime artifact-tool. PPTX finalizer package/layout/font/import pass; render13PNG và montage, PDF từ render. Kiểm visual montage và các trang schema/flow; chưa mở Microsoft PowerPoint thực, không runtime app checks.
+- Nguồn trạng thái main HANDOFF:FE mock; slide không claim backend/CI/deploy pass. Output path/notes/source ở README của bộ quick. Commit/push main theo yêu cầu chủ repo, chỉ stage artifacts quick và worklog.
+
 ## 2026-11-03 — Đồng bộ main và đổi quy trình nhánh
 
 - Chủ repo yêu cầu kéo code main, từ giờ chỉ làm trên main. Fetch origin, switch main, pull --ff-only origin main thành công; baseline local/remote trùng 3b1ddc319aa86079ef8a4a3a2f1a5a5c2e223e14.

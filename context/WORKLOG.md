@@ -1,5 +1,18 @@
 # Worklog
 
+## 2026-11-03 08:31 Asia/Bangkok — PLAN S2 hoàn tất nội dung
+
+- Chủ repo nhắc hoàn tất nhanh PLAN chi tiết FE/BE chung Markdown, phân quyền ba role, demo đúng hai bàn và account/demo TXT; chỉ PLAN trong lượt này.
+- Đọc agent.md, PROJECT/HANDOFF/WORKLOG, plans README/template/feature template, index và playbook PLAN/system/feature/frontend/backend/flow/testing/CI/chart; skills git-workflow, security-review, verification-loop, agent-self-evaluation. Repo sạch ban đầu, nhánh codex/taporder-plan, origin giữ nguyên; chưa manifests/tests/CI app.
+- Bổ sung PLAN-2 mục9–17: F01–F12/algorithms/errors/locks, API inventory/examples/schema policy, FE routes/cache/mock/a11y, BE modules/transactions, sequence, task graph/ownership/worktrees, T01–T16/CI gates, demo và yêu cầu bất ngờ. Thống nhất routes, can_cancel, expected visit race; seed đúng bàn1/3 thay 5 bàn.
+- Đọc source QR RestaurantSettings tại pin59216d7: có QRCodeSVG/export PNG nhưng QR chung quán; plan port thành từng bàn. Bổ sung encrypted token để cashier xuất lại QR với hash lookup. GitHub connector xác nhận source; web open lỗi cache, không coi là source runtime đã chạy.
+- Sửa nhận định cũ: SHA nguồn thật có package-lock.json (git ls-tree xác minh); chưa npm ci/build, không khẳng định nguồn thiếu lock. Không install/run code/SQL nguồn.
+- DEMO.txt có usernames dự kiến và script; password/QR thật chỉ xuất TXT ignored ở DEMO01, chưa tạo account giả hoặc commit secrets. Chưa app/mock/live/canonical OpenAPI/deploy.
+- Local docs checks thực chạy: Python kiểm4 tài liệu/15 link nội bộ/17 sections/F01–F12/T01–T16/fences đều pass; git diff --check pass; diff review consistency/quyền/secrets. Mermaid source đã review, chưa render. Build/types/lint/unit/integration/security dependency audit N/A chưa app; hosted CI và deployed checks chưa chạy.
+- Fetch origin thành công sau dùng quyền phù hợp vì mặc định bị chặn ghi FETCH_HEAD; HEAD và origin branch chưa diverge (0/0) trước commit. Commit/push/remote SHA xác minh ở thao tác cuối; tra history/ls-remote, không nhúng SHA tự tham chiếu.
+- Self-evaluation: accuracy4/5 (static/source facts đã đối chiếu, runtime chưa có); completeness4/5 (đủ PLAN nhưng canonical schema/accounts thật thuộc mốc sau); clarity4/5 (17 mục và bảng, vẫn dài để đủ giao việc); actionability4/5 (C01/tasks/tests rõ, commands còn phải tạo ở scaffold); conciseness4/5 (có lặp acceptance để trace test). Trung bình4.0/5. Cải thiện ưu tiên: kiểm canonical examples/DTO ở C01, render diagrams khi detailed design; không mở rộng scope thành app trong PLAN.
+- Next coordinator C01 CONTRACT-1, S01 scaffold rồi hai agent FE/BE design khi được giao; chưa khởi chạy agent sản phẩm.
+
 ## 2026-11-03 — PLAN: khảo sát source và deploy webapp
 
 - S1 commit `9ccdca2a9abb5bd8c031df75c82e73b2397f505c` đã push, local/remote SHA trùng.

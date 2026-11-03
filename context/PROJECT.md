@@ -20,3 +20,5 @@ Ngày thiết lập: 2026-11-03 (Asia/Bangkok).
 - Markdown trong repo là context chuẩn và có thể đọc ngoài Obsidian. UI settings/ECC local/tools/secrets bị ignore.
 
 Nguồn quy trình: [AGENTS](../AGENTS.md), [agent guide](../agent.md), [playbook](../playbook/README.md). Trạng thái thay đổi nhanh xem [HANDOFF](HANDOFF.md).
+
+- 2026-11-03 integration: backend FastAPI/PostgreSQL implementation, design and canonical contract now included on main; FE defaults live. Snapshot statically reviewed only. Demo LAN setup: scripts/demo-lan.ps1; deployed host still needs same-origin HTTPS API proxy. See docs/backend-review-integration.md.

@@ -1,0 +1,9 @@
+{
+  "data": [],
+  "meta": {
+    "next_cursor": null,
+    "limit": 50
+  },
+  "event_cursor": "0",
+  "shift_open": false
+}

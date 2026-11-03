@@ -19,6 +19,7 @@ export interface OrderItem {
   note: string
   status: ItemStatus
   version: number
+  can_cancel?: boolean
   guest_id: string
   order_id: string
   created_at: string
@@ -55,6 +56,7 @@ export interface Payment {
 }
 
 export interface Table {
+  id?: string
   number: number
   qr_token: string
   status: 'free' | 'serving'

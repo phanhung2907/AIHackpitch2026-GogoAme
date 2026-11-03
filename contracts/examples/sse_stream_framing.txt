@@ -1,0 +1,15 @@
+: heartbeat
+
+id: 42
+event: item.updated
+data: {"id":"42","type":"item.updated","resource_id":"90000000-0000-4000-8000-000000000001","version":2,"occurred_at":"2026-11-03T09:06:00Z"}
+
+id: 45
+event: checkpoint
+data: {"cursor":"45"}
+
+event: reset
+data: {"reason":"cursor_out_of_range"}
+
+event: session_expired
+data: {"reason":"session_expired"}

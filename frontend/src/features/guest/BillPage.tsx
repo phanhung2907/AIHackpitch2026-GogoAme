@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
-import { api, guestId } from '../../api/client'
+import { api, guestId, usingMock } from '../../api/client'
 import { ApiError } from '../../api/types'
 import { Button, Card, ErrorBox, StatusBadge, clock, vnd } from '../../lib/ui'
 import { SyncBadge, pollInterval, useOnline } from '../../lib/sync'
@@ -34,7 +34,7 @@ export function BillPage() {
   }
 
   const b = bill.data
-  const qrToken = `t${b.table_number}`
+  const qrToken = usingMock ? `t${b.table_number}` : sessionStorage.getItem('taporder.qr') ?? ''
 
   return (
     <div className="mx-auto min-h-screen w-full max-w-md bg-slate-50 pb-24">
@@ -75,7 +75,7 @@ export function BillPage() {
                   <div className="flex shrink-0 flex-col items-end gap-2">
                     <StatusBadge status={item.status} />
                     {/* D01: chỉ dòng của chính phiên khách này và còn chờ mới hủy được. */}
-                    {b.status === 'open' && item.status === 'waiting' && item.guest_id === me && (
+                    {b.status === 'open' && item.status === 'waiting' && (usingMock ? item.guest_id === me : item.can_cancel) && (
                       <Button
                         variant="danger"
                         className="px-3 text-xs"

@@ -1,0 +1,11 @@
+{
+  "error": {
+    "code": "BILL_CLOSED",
+    "message": "Hóa đơn đã thanh toán và đóng.",
+    "details": {
+      "bill_id": "70000000-0000-4000-8000-000000000001",
+      "status": "paid"
+    },
+    "request_id": "req-409-closed"
+  }
+}

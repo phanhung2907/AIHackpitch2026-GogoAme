@@ -22,3 +22,6 @@ coverage/
 Thumbs.db
 .DS_Store
 graphify-out/
+
+# Public frontend build flags, no secrets
+!frontend/.env.production

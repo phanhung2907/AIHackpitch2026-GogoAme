@@ -1,0 +1,8 @@
+{
+  "error": {
+    "code": "IDEMPOTENCY_CONFLICT",
+    "message": "Idempotency-Key đã được dùng cho một nội dung lệnh khác.",
+    "details": {},
+    "request_id": "req-409-idem"
+  }
+}

@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
 import { api } from '../../api/client'
-import { ApiError } from '../../api/types'
+import { ApiError, type Table } from '../../api/types'
 import { Button, Card, Empty, ErrorBox, StatusBadge, clock, vnd } from '../../lib/ui'
 import { SyncBadge, pollInterval, useOnline } from '../../lib/sync'
 
@@ -145,7 +145,6 @@ export function CashierBillPage() {
 /** /staff/cashier/qr — QR từng bàn, xuất PNG để in; SVG là phương án dự phòng (F10). */
 export function CashierQrPage() {
   const tables = useQuery({ queryKey: ['cashier', 'tables'], queryFn: api.tables })
-  const origin = window.location.origin
 
   return (
     <div className="space-y-4">
@@ -157,7 +156,7 @@ export function CashierQrPage() {
       </div>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {(tables.data ?? []).map((t) => (
-          <TableQrCard key={t.number} tableNumber={t.number} url={`${origin}/t/${t.qr_token}`} />
+          <TableQrCard key={t.number} tableNumber={t.number} table={t} />
         ))}
       </div>
     </div>
@@ -171,7 +170,9 @@ function download(href: string, filename: string) {
   a.click()
 }
 
-function TableQrCard({ tableNumber, url }: { tableNumber: number; url: string }) {
+function TableQrCard({ tableNumber, table }: { tableNumber: number; table: Table }) {
+  const qr = useQuery({ queryKey: ['cashier', 'qr', table.id ?? table.number], queryFn: () => api.tableQr(table) })
+  const url = qr.data ?? ''
   const holder = useRef<HTMLDivElement>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -223,7 +224,7 @@ function TableQrCard({ tableNumber, url }: { tableNumber: number; url: string })
     <Card className="text-center">
       <p className="font-bold">Bàn {tableNumber}</p>
       <div ref={holder} className="my-3 flex justify-center">
-        <QRCodeSVG value={url} size={160} level="M" includeMargin />
+        {url ? <QRCodeSVG value={url} size={160} level="M" includeMargin /> : <p>Đang lấy QR…</p>}
       </div>
       <p className="break-all text-xs text-slate-500">{url}</p>
       {error && <p className="mt-2 text-xs text-amber-700">{error}</p>}

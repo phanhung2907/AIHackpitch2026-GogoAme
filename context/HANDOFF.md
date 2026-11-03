@@ -1,3 +1,7 @@
+# Latest integration checkpoint — 2026-11-03
+
+Backend/design/contract snapshot and live FE integration now on main. No tests run by explicit request. Build unavailable: npm/dependencies missing. Backend not started and deployed frontend proxy not configured. See [integration checkpoint](agents/integration-live.md) and [demo guide](../docs/backend-review-integration.md). Earlier entries below describe historical state.
+
 # Bàn giao hiện tại
 
 ## Trạng thái

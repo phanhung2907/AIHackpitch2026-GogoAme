@@ -1,6 +1,7 @@
+import { useEffect, useState } from 'react'
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { api } from '../../api/client'
+import { api, usingMock } from '../../api/client'
 import { useStaff } from '../../stores/staff'
 import { Button } from '../../lib/ui'
 
@@ -22,6 +23,15 @@ export function StaffLayout({ role }: { role: 'barista' | 'cashier' }) {
   const setStaff = useStaff((s) => s.setStaff)
   const navigate = useNavigate()
   const qc = useQueryClient()
+  const [restoring, setRestoring] = useState(!usingMock)
+  useEffect(() => {
+    if (usingMock) return
+    let active = true
+    api.session().then((s) => { if (active) setStaff(s) }).catch(() => { if (active) { setStaff(null); qc.clear() } }).finally(() => { if (active) setRestoring(false) })
+    return () => { active = false }
+  }, [setStaff, qc])
+  if (restoring) return <p className="p-6">Đang khôi phục phiên…</p>
+
 
   if (!staff || staff.role !== role) {
     return (

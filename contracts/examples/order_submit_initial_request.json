@@ -1,0 +1,12 @@
+{
+  "qr_token": "DEMO_FIXTURE_QR_TOKEN_43_CHARS_PLACEHOLDER_",
+  "expected_bill_id": null,
+  "items": [
+    {
+      "menu_item_id": "30000000-0000-4000-8000-000000000001",
+      "quantity": 2,
+      "note": "Ít đá",
+      "expected_unit_price_vnd": "30000"
+    }
+  ]
+}

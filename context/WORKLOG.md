@@ -1,5 +1,12 @@
 # Worklog
 
+## 2026-11-03 — Sửa slides: ảnh Mermaid và quan hệ database
+
+- Theo phản hồi chủ repo, nhúng ảnh Mermaid gốc ngay slide4; thay schema liệt kê bằng ERD native/editable ở slide7–8: bảng, PK/FK, đường nối và cardinality. Đối chiếu DESIGN-1 cùng backend/app/models/__init__.py (read-only); không sửa app.
+- Core: shifts→bills/payments, tables→bills, bills→orders/payment unique, orders→items. Access/catalog: staff→sessions→memberships←bills, categories→menu_items→order_items. Quan hệ guest membership N–N qua composite PK được vẽ bằng đường nối.
+- Xuất TapOrder-Quick-Pitch-v5.pptx + cập nhật PDF/previews/notes. Artifact-tool finalizer package/layout/font/import pass; render/xem slide4/7/8 và sửa chữ chạm mép. Chưa mở Microsoft PowerPoint thực. Giữ các thay đổi frontend/scripts và slides khác không thuộc task.
+- Main only; stage đúng artifact/task context, commit/push/verify remote cuối lượt.
+
 ## 2026-11-03 — Slides quick pitch business và technical
 
 - Theo yêu cầu làm nhanh, tạo presentations/taporder-quick:13slides gồm12pitch+1appendix, PPTX editable/PDF/notes/previews; có luồng A–Z rút gọn, sơ đồ Mermaid gốc và schema PK/FK theo DESIGN-1.

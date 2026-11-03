@@ -1,5 +1,11 @@
 # Worklog
 
+## 2026-11-03 — Đồng bộ main và đổi quy trình nhánh
+
+- Chủ repo yêu cầu kéo code main, từ giờ chỉ làm trên main. Fetch origin, switch main, pull --ff-only origin main thành công; baseline local/remote trùng 3b1ddc319aa86079ef8a4a3a2f1a5a5c2e223e14.
+- Giữ nguyên presentations/ chưa tracked và worktree backend của agent khác; không tự merge nhánh thiết kế/backend vào main.
+- Ghi override branch policy trong AGENTS.md/agent.md. Scope chỉ Git/workflow/docs; không đổi app, không cần application tests. Kiểm diff whitespace; commit/push đúng3file và xác minh remote ở bước cuối.
+
 ## 2026-11-03 — Đưa PLAN vào main
 
 - Chủ repo yêu cầu “merge vô main”. Đọc HANDOFF, Git status/branch/remote/history và skill git-workflow; working tree sạch. Fetch/ls-remote xác nhận chưa có main local/remote, default remote là codex/setup-agent-workflow.

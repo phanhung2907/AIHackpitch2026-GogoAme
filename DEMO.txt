@@ -1,0 +1,57 @@
+TAPORDER — HƯỚNG DẪN DEMO HAI BÀN (PLAN-2, 2026-11-03)
+
+TRẠNG THÁI: mới hoàn tất PLAN, chưa triển khai app/chưa tạo account thật.
+Kế hoạch chung: plans/product-plan.md, đặc biệt mục 16.
+
+BA VAI TRÒ
+Khách: không đăng nhập, mở QR bàn 1 hoặc bàn 3.
+Pha chế: username dự kiến barista.demo, vào /staff/login → /staff/kitchen.
+Thu ngân: username dự kiến cashier.demo, vào /staff/login → /staff/cashier.
+Không có account admin, không dùng tài khoản demo của repo nguồn.
+
+ACCOUNT VÀ URL THẬT KHI TRIỂN KHAI
+Seed nhận DEMO_BARISTA_PASSWORD và DEMO_CASHIER_PASSWORD từ env riêng.
+Ở mốc DEMO01, seed/export phải tạo .local-tools/demo/accounts.txt trên máy demo:
+  - Base URL thật và thời điểm/SHA bản demo.
+  - Pha chế: username, password thật, URL đăng nhập/trang pha chế.
+  - Thu ngân: username, password thật, URL đăng nhập/trang thu ngân.
+  - Khách: không cần account; hai link QR thật cho bàn 1 và bàn 3.
+  - Đường dẫn ảnh QR table-1.png/table-3.png và SVG dự phòng.
+File này nằm thư mục ignored, không commit mật khẩu/token QR lên GitHub.
+Không in password vào log CI/cloud. Nếu thiếu file account riêng thì DEMO01 chưa done.
+Chưa có URL/password thật ở mốc PLAN; không hiểu placeholder là account đã hoạt động.
+
+CHUẨN BỊ
+1. Làm theo README chạy app sẽ tạo ở scaffold: dependencies/DB Docker/migration/seed.
+2. Xác nhận health ready, mock off, passwords đã set, account TXT riêng đã xuất đủ.
+3. Thu ngân mở ca. QR phải dùng base URL hiện chạy; giải mã thử cả hai QR.
+4. Hai browser/profile khách: A bàn 1, B bàn 3.
+5. Hai profile staff riêng: C pha chế, D thu ngân; tránh đè cookie staff.
+6. Seed đúng hai bàn 1 và 3, cà phê sữa 30.000 và trà đào 35.000 VND.
+
+KỊCH BẢN HỘI ĐỒNG
+1. Bàn 1 gọi 2 cà phê sữa ít đá (60.000); bàn 3 gọi 1 trà đào (35.000).
+2. Pha chế thấy đủ 2 lượt, chuyển cà phê chờ → đang pha → xong.
+3. Khách bàn 1 thấy trạng thái cập nhật; bàn 3 không thấy bill bàn 1.
+4. Bàn 1 gọi thêm 1 trà đào; pha chế làm xong; cùng bill tổng 95.000.
+5. Thu ngân xác nhận cash bàn 1: bill paid, bàn rảnh, đúng 1 payment 95.000.
+6. Mở lại QR bàn 1: vào menu lượt mới, GET chưa tạo bill.
+7. Gửi 1 cà phê: bill mới 30.000, bill cũ 95.000 không bị đổi; tab cũ không gọi vào bill paid.
+8. Demo sáng tạo: ngắt/kết nối lại mạng, SSE/polling khôi phục đúng trạng thái, không trùng order.
+9. Thử hủy own waiting thành công; sau preparing bị chặn. Hết hàng lúc đang chọn: reject cả lượt, giữ giỏ.
+10. Gợi ý/report chỉ trình diễn khi P2 đã triển khai và pass; P1 realtime đủ hướng sáng tạo.
+
+BA QUYẾT ĐỊNH NGHIỆP VỤ ĐỂ TRÌNH BÀY
+- Hủy toàn dòng của chính khách, chỉ khi waiting.
+- QR sau paid dùng cho lượt mới; không mở lại hóa đơn đã trả.
+- Hết hàng từ chối cả lượt, khách sửa giỏ rồi gửi lại.
+
+YÊU CẦU BẤT NGỜ
+Ghi rõ yêu cầu và before/after; tạo nhánh từ SHA demo đã push; sửa contract nếu cần;
+regression/unit → integration liên quan → lint/type/build affected; context/review/commit/push/
+verify SHA rồi trình diễn đúng phần thay đổi. Chưa biết yêu cầu nên chưa có thay đổi thật.
+Giữ bản demo baseline để rollback; không xóa dữ liệu/payment hoặc volume để sửa demo.
+
+KẾT THÚC
+Hoàn thành bill còn mở rồi đóng ca, đối soát doanh thu, logout.
+Đánh dấu riêng local checks, hosted CI, deployed smoke; không suy CI/deploy pass từ PLAN.

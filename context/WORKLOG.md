@@ -1,5 +1,43 @@
 # Worklog
 
+## 2026-11-03 — Đưa PLAN vào main
+
+- Chủ repo yêu cầu “merge vô main”. Đọc HANDOFF, Git status/branch/remote/history và skill git-workflow; working tree sạch. Fetch/ls-remote xác nhận chưa có main local/remote, default remote là codex/setup-agent-workflow.
+- Tạo main từ codex/taporder-plan tại 0f53293, chứa toàn bộ lịch sử setup/PLAN; không cần merge commit giả khi main chưa tồn tại. Giữ nguyên các nhánh và default remote, không force push.
+- Scope chỉ context/Git; kiểm diff whitespace và ancestry PLAN, commit context/push main/so SHA remote ở bước cuối. Không có app để chạy build/tests; hosted CI/deploy chưa chạy. Bước tiếp theo vẫn C01 khi được giao.
+
+## 2026-11-03 08:31 Asia/Bangkok — PLAN S2 hoàn tất nội dung
+
+- Chủ repo nhắc hoàn tất nhanh PLAN chi tiết FE/BE chung Markdown, phân quyền ba role, demo đúng hai bàn và account/demo TXT; chỉ PLAN trong lượt này.
+- Đọc agent.md, PROJECT/HANDOFF/WORKLOG, plans README/template/feature template, index và playbook PLAN/system/feature/frontend/backend/flow/testing/CI/chart; skills git-workflow, security-review, verification-loop, agent-self-evaluation. Repo sạch ban đầu, nhánh codex/taporder-plan, origin giữ nguyên; chưa manifests/tests/CI app.
+- Bổ sung PLAN-2 mục9–17: F01–F12/algorithms/errors/locks, API inventory/examples/schema policy, FE routes/cache/mock/a11y, BE modules/transactions, sequence, task graph/ownership/worktrees, T01–T16/CI gates, demo và yêu cầu bất ngờ. Thống nhất routes, can_cancel, expected visit race; seed đúng bàn1/3 thay 5 bàn.
+- Đọc source QR RestaurantSettings tại pin59216d7: có QRCodeSVG/export PNG nhưng QR chung quán; plan port thành từng bàn. Bổ sung encrypted token để cashier xuất lại QR với hash lookup. GitHub connector xác nhận source; web open lỗi cache, không coi là source runtime đã chạy.
+- Sửa nhận định cũ: SHA nguồn thật có package-lock.json (git ls-tree xác minh); chưa npm ci/build, không khẳng định nguồn thiếu lock. Không install/run code/SQL nguồn.
+- DEMO.txt có usernames dự kiến và script; password/QR thật chỉ xuất TXT ignored ở DEMO01, chưa tạo account giả hoặc commit secrets. Chưa app/mock/live/canonical OpenAPI/deploy.
+- Local docs checks thực chạy: Python kiểm4 tài liệu/15 link nội bộ/17 sections/F01–F12/T01–T16/fences đều pass; git diff --check pass; diff review consistency/quyền/secrets. Mermaid source đã review, chưa render. Build/types/lint/unit/integration/security dependency audit N/A chưa app; hosted CI và deployed checks chưa chạy.
+- Fetch origin thành công sau dùng quyền phù hợp vì mặc định bị chặn ghi FETCH_HEAD; HEAD và origin branch chưa diverge (0/0) trước commit. Commit/push/remote SHA xác minh ở thao tác cuối; tra history/ls-remote, không nhúng SHA tự tham chiếu.
+- Self-evaluation: accuracy4/5 (static/source facts đã đối chiếu, runtime chưa có); completeness4/5 (đủ PLAN nhưng canonical schema/accounts thật thuộc mốc sau); clarity4/5 (17 mục và bảng, vẫn dài để đủ giao việc); actionability4/5 (C01/tasks/tests rõ, commands còn phải tạo ở scaffold); conciseness4/5 (có lặp acceptance để trace test). Trung bình4.0/5. Cải thiện ưu tiên: kiểm canonical examples/DTO ở C01, render diagrams khi detailed design; không mở rộng scope thành app trong PLAN.
+- Next coordinator C01 CONTRACT-1, S01 scaffold rồi hai agent FE/BE design khi được giao; chưa khởi chạy agent sản phẩm.
+
+## 2026-11-03 — PLAN: khảo sát source và deploy webapp
+
+- S1 commit `9ccdca2a9abb5bd8c031df75c82e73b2397f505c` đã push, local/remote SHA trùng.
+- Chủ repo bổ sung: deploy nhanh và thủ tục rõ trong PLAN; tìm/clone repo cùng đề, ưu tiên repo roshanx0 gửi. Đọc skills deployment-patterns/github-ops, dùng GitHub connector và web docs chính thức.
+- Clone 3 repo vào `.local-tools/references/`, kiểm clones sạch và đều ignored, chưa install/run source/SQL. SHA/lựa chọn trong PLAN mục 7: UI roshan MIT; ứng viên 2 thiếu root LICENSE; ứng viên 3 AGPL không copy code.
+- Static review roshan: SQL thật setup.sql, README chỉ schema.sql không có; checkout tự nhập bàn/tên/phone, tổng/thuế client; JSONB orders thiếu bill nhiều lượt/per-item status; auth/RLS/role phải thay. Không claim runtime/security pass.
+- PLAN mục 8: Railway Docker web FE+FastAPI cùng origin + Postgres, Render dự phòng; account/budget/GitHub/env/Docker/PORT/migrate/seed/HTTPS/QR/SSE/smoke/update/rollback, links nguồn đọc 2026-11-03. Chưa cloud resource/chi phí/deploy.
+- Checks checkpoint: Markdown structure/link và diff trước commit; app tests/build/types/lint N/A, hosted CI/deployed checks chưa chạy. Next coordinator: S2 contract/features/FE/BE/tasks/tests cùng file.
+
+## 2026-11-03 07:58 Asia/Bangkok — PLAN S1: hệ thống và quyền TapOrder
+
+- Yêu cầu: PLAN chi tiết FE/BE chung một file; ba role có API/actions/UI khác nhau; commit/push sau mỗi bước. Chỉ PLAN, chưa triển khai app.
+- Nguồn đọc: AGENTS.md, agent.md, PROJECT/HANDOFF/WORKLOG, plans/README + template, feature template, README; đủ 10 Markdown playbook; skills git-workflow, verification-loop, security-review, agent-self-evaluation.
+- Repo baseline `88e19d3`, sạch, chưa manifests/locks/tests/CI. Tạo nhánh `codex/taporder-plan`; fetch origin thành công với quyền phù hợp sau lần read remote mặc định lỗi mạng. Giữ remote cũ.
+- S1: tạo PLAN sections 1–6, scope/decisions/system trước feature; role/action/resource/UI matrix, guest capability + staff RBAC, schema/state/locks/idempotency, môi trường/seed/rollback. P0 nghiệp vụ, P1 SSE, P2 gợi ý/thống kê.
+- Chốt ba câu hỏi đề: hủy dòng của mình khi waiting; paid không reopen, QR cho lượt mới khi submit; hết hàng reject cả lượt và giữ giỏ. Không có câu hỏi nghiệp vụ chặn PLAN.
+- Mock/live: chưa có app. Checks S1: kiểm cấu trúc/link và diff trước commit; application tests/build/types/lint N/A do chỉ Markdown. Hosted CI/deploy chưa có/chưa chạy. Push/SHA xác minh sau commit, không suy ra từ local.
+- Next owner coordinator: S2 hoàn thiện cùng file, chưa chạy hai agent sản phẩm.
+
 ## 2026-11-03 — SETUP: quy trình và vault
 
 - Yêu cầu: chuẩn bị môi trường/hướng dẫn trước khi nhận đề, giữ stack FE cũ và dùng Python/FastAPI/PostgreSQL Docker.

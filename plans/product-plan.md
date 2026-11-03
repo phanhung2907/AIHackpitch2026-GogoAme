@@ -4,6 +4,8 @@ Ngày quyết định: 2026-11-03, Asia/Bangkok. Revision: PLAN-2, hoàn tất �
 
 Hai ưu tiên bổ sung: **mục 7 — repo có sẵn và kế hoạch tinh chỉnh**, **mục 8 — thủ tục đưa webapp lên Internet**. Toàn bộ PLAN frontend/backend nằm chung file này; context chỉ ghi checkpoint.
 
+Cập nhật sau PLAN theo yêu cầu chủ repo: [DESIGN-1](../docs/design/README.md) đã chi tiết hóa system/data/technical/API, F01–F12, test plan và [sơ đồ A–Z](../docs/design/product-flow.md). BD01 được làm trước C01/S01 trong lượt thiết kế; C01 vẫn bắt buộc trước code và làm song song. Các làm rõ concurrency bên dưới thống nhất với DESIGN-1; không triển khai app/deploy ở bước này.
+
 Nguồn: yêu cầu Đề 2 TapOrder và bổ sung phân quyền của chủ repo trong chat; [agent guide](../agent.md), [template PLAN](product-plan.template.md), [playbook index](../playbook/README.md), [feature template](../docs/templates/feature-design.md). Đã đọc toàn bộ 10 Markdown trong playbook. Quy tắc repo hiện hành được ưu tiên hơn checkpoint cũ và ví dụ banking.
 
 ## 1. Bài toán, thuật ngữ và kết quả cần đạt
@@ -156,8 +158,10 @@ Tất cả ID UUID server tạo; thời gian `timestamptz` UTC, hiển thị Asi
 | order_items | id, order_id FK, menu_item_id FK, name_snapshot, unit_price_vnd BIGINT >0, quantity int 1..20, note varchar(250), status enum, version, started_at?, done_at?, cancelled_at? | order_id; status/order_id; snapshot và time checks |
 | payments | id, bill_id FK UNIQUE, shift_id FK, cashier_id FK, method=cash, amount_vnd BIGINT >=0, paid_at | shift/paid_at, bill UNIQUE |
 | idempotency_records | id, principal_kind/id, operation, key UUID, payload_hash, response_status, response_json, created_at, expires_at; UNIQUE scope/operation/key | Retry lookup; giữ tối thiểu 24 giờ |
-| domain_events | id BIGINT generated PK, bill_id? FK, audience guest/kitchen/cashier/menu, event_type, aggregate_version, created_at | audience/id; bill_id/id, retention 24 giờ |
+| domain_events | id BIGINT PK cấp từ event_clock dưới lock cuối transaction, bill_id? FK, audience guest/kitchen/cashier/menu, event_type, resource_type/id, aggregate_version, created_at | audience/id; bill_id/id, retention 24 giờ; cursor theo commit, xem DESIGN-1 |
 | audit_events | id, request_id, principal_kind/id, action, resource_type/id, before_state?, after_state?, created_at | resource/time; không chứa secrets/note text |
+
+DESIGN-1 bổ sung bảng nội bộ `preauth_sessions`, singleton `shift_guard` và `event_clock`; [data model](../docs/design/data-model.md) là chi tiết migration. Không thêm tính năng sản phẩm.
 
 Bill total mở tính server SUM(unit_price_snapshot * quantity) với status != cancelled, không lấy tổng từ client; closed bill lưu snapshot và đối soát payment cùng transaction. Line max 200.000.000 VND; tối đa 50 dòng/lượt và tổng bill <= 1.000.000.000 VND, vượt trả 422 `BILL_LIMIT_EXCEEDED`. Note được trim, text thuần, không HTML; quantity là integer, không nhận float/0/số âm. Không gộp các dòng khác ghi chú; cùng món/note có thể là dòng riêng.
 
@@ -179,11 +183,11 @@ Bất biến phải bảo vệ bằng DB + service: một bill mở/bàn; một 
 
 ### 5.3 Transaction/lock và race
 
-Thứ tự khóa toàn cục cho mutation: idempotency reservation → ca hiện tại → table → bill → menu_items theo UUID tăng dần → order_items theo UUID tăng dần. Chỉ lấy các khóa cần thiết nhưng không đảo thứ tự. Ca dùng shared row lock cho order/payment, exclusive cho open/close; table/bill dùng `FOR UPDATE`. READ COMMITTED với truy vấn kiểm tra lại sau khi đã khóa. Ca đóng kiểm bill mở dưới exclusive lock nên không đua tạo bill.
+Thứ tự khóa toàn cục cho mutation: idempotency reservation → shift_guard → ca hiện tại → table → bill → menu_items theo UUID tăng dần → order_items theo UUID tăng dần → event_clock. Chỉ lấy các khóa cần thiết nhưng không đảo thứ tự. Guard và ca dùng shared row lock cho order/payment, exclusive cho open/close; table/bill dùng `FOR UPDATE`. Guard có sẵn cả khi chưa có ca. READ COMMITTED với truy vấn kiểm tra lại sau khi đã khóa. Ca đóng kiểm bill mở dưới exclusive lock nên không đua tạo bill. Snapshot đọc/cursor và event commit-order theo [technical design](../docs/design/technical-design.md).
 
 | Race | Quy tắc và hậu điều kiện |
 | --- | --- |
-| Hai submit đầu cùng bàn | Cùng khóa table; giao dịch sau join bill mới tạo; partial unique index là hàng rào cuối; 1 bill/2 order |
+| Hai submit đầu cùng bàn | Cùng khóa table; submit null đến sau trả TABLE_VISIT_CHANGED, không tự join. Khách xác nhận/join rồi gửi key mới mới có 1 bill/2 order; partial unique index là hàng rào cuối |
 | Submit gọi thêm và thanh toán | Cùng table/bill lock. Submit trước làm tăng version và có món chờ nên payment từ snapshot cũ 409; payment trước thì submit bill cũ 409 `BILL_CLOSED`, không tự chuyển sang bill mới |
 | Hủy và pha chế bắt đầu | Khóa bill rồi item, kiểm expected_version/state; một thắng, một 409; không có dòng vừa cancelled vừa preparing |
 | Hết hàng và submit | Submit khóa menu row, availability update cũng khóa menu row; quyết định theo trạng thái commit được serialize, không nhận order nếu hết hàng đã commit trước |
@@ -546,7 +550,7 @@ Mỗi request là transaction riêng, không giữ submit chờ pha chế/thu ti
 | DEMO01 |Coordinator/codex/taporder-demo |INT01 |QR/local account TXT/rehearsal evidence; local và hosted checks riêng |
 | DEP01–03 |Release owner/khi được giao |DEMO01+quyền cloud/budget |Runbook8/deployed smoke/rollback evidence; không deploy trong PLAN |
 
-Đồ thị PLAN→C01→S01→(FE01 song song BD01)→BE01→INT01→DEMO01→DEP nếu được giao. Chưa chạy hai agent sản phẩm trong task PLAN. Lúc được giao coordinator tạo worktree/nhánh riêng cùng baseline đã push; FE sở hữu frontend, BD docs/design/decisions, coordinator contracts/plans/context tổng. Agent code backend chỉ nhận sau design review, không tự đổi task BD thành implementation.
+Đồ thị gốc PLAN→C01→S01→(FE01 song song BD01)→BE01→INT01→DEMO01→DEP nếu được giao. Cập nhật theo yêu cầu thiết kế hiện tại: BD01 có DESIGN-1 trước C01/S01; nhánh thực thi tiếp là C01→S01→FE01/BE01 từ cùng baseline contract đã push. Chưa chạy hai agent sản phẩm. Lúc được giao coordinator tạo worktree/nhánh riêng; FE sở hữu frontend, BE backend, coordinator contracts/plans/context tổng. Agent code backend chỉ nhận sau design review và contract/scaffold gates, không tự đổi task BD thành implementation.
 
 Mỗi task hoàn chỉnh: checks đúng scope → context agent riêng/HANDOFF/WORKLOG tổng → review/stage đúng file → Conventional Commit → fetch/check divergence → push origin nhánh → local HEAD so ls-remote. Không force/đổi remote/gom file owner khác. Contract đổi qua coordinator/revision/notify, merge contract/scaffold trước FE/BE rồi live gate; merge source chưa phải tích hợp. Không dừng xin phép mỗi mốc đã giao; lượt này dừng đúng scope PLAN.
 
